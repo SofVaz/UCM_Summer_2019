@@ -51,7 +51,7 @@ Of the new courses only UGR2001 is not included in the previous course catalogue
 ```{r missing from old}
 courses_new_included %>% filter(Included == F)
 ```
-To be thorow, let us check which old courses are not in the new courses:
+To be thorow, let us check which old courses are not in the new courses (new courses are ILO courses for which we have the most uptodate data):
 ```{r}
 courses_old_included <- tibble(Course = courses$`Course ID`) %>%
   mutate(Included = case_when(Course %in% new_courses$Course~T,
@@ -59,16 +59,34 @@ courses_old_included <- tibble(Course = courses$`Course ID`) %>%
 #Check to see how many are included and not included:
 table(courses_old_included$Included)
 ```
-We have 32 discontinued courses:
+We have 32 'discontinued' courses, but these include all projects because we were not given the file. 
 ```{r discontinued}
+courses_old_included %>% filter(Included == F)
+```
+Okay, lets get ALL courses in a single data frame, and mark which are not in our ILO file, and which are not in our old files. We suspect some of the not_in_ILO file courses to be discontinued, we might not find course manuals for them:
+```{r all courses}
+courses_all <- tibble(Course = courses$`Course ID`) %>%
+  full_join(new_courses, by = "Course") %>%
+  mutate(included_ILO_file = ifelse(Course %in% new_courses$Course, T,F),
+         included_in_Old_data = ifelse(Course %in% courses$`Course ID`, T,F))
 
+courses_all
+```
+Now, we would like to see what research methodology is used in each course, per task. For this we need a spreadhseet with all courses split into tasks. Generally there are 12 tasks but to be on the save side, lets say there are 14 tasks. 
+We also want to be able to track the methodology to each article. I will assume that there are 10 articles per task.
+
+This is going to be a huge spreadsheet:
+```{r research spreadsheet}
+course_codes <- courses_all$Course
+tasks        <- 1:14
+articles     <- 1:10
+
+research_methodology <- expand.grid(articles, tasks, course_codes) %>% 
+  rename(Article = Var1, Task = Var2, Course = Var3) %>%
+  select(Course, Task, Article)
+
+
+write_excel_csv(research_methodology, path = "~/Documents/Summer UCM/Methodology/ResearchMethodologies.csv")
 ```
 
-```{r}
-research <- rep(courses$`Course ID`, each = 14)
-research_methodology <- tibble(`Course ID` = research) %>% 
-  mutate(Task = rep(1:14, times = length(`Course ID`)/14))
-
-write_excel_csv(courses,path = "~/Documents/Summer UCM/Methodology/ResearchMethodologies.csv")
-```
-
+We open the csv on excel and save it as an excel sheet
