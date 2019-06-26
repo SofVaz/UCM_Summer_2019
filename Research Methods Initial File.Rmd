@@ -1,0 +1,74 @@
+---
+title: "Preparing Files for Research Methods"
+author: "DARS"
+date: "6/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Libraries
+```{r}
+library(tidyverse)
+library(readxl)
+```
+#Preparing Research Methodology file
+##Import all courses from catalogues 
+Source: DARS
+```{r import old}
+load("~/Documents/DARS/Fresh DARS/DARS/Output/d_text.RDATA")
+```
+##Import new courses Source: 
+Edith- ILOs
+```{r import new}
+#import raw
+new_courses_ilo <- read_xlsx("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx")
+
+#clean without ilo
+new_courses     <- new_courses_ilo %>% select(Course) %>% distinct() 
+new_courses
+```
+##Get all courses vector:
+I get all the courses from the UCM catalogues, as this is the most comprehensive list available:
+```{r}
+courses <- d_text$catalogues %>% 
+  filter(department == "UCM") %>% 
+  select(`Course ID`) %>% 
+  distinct()
+courses
+```
+I check whether all new courses are included:
+```{r which new courses are already in data}
+courses_new_included <- tibble(Course = new_courses$Course) %>%
+  mutate(Included = case_when(Course %in% courses$`Course ID`~T,
+         T~F))
+#Check to see how many are included and not included:
+table(courses_new_included$Included)
+```
+Of the new courses only UGR2001 is not included in the previous course catalogues, this is probably just a name issue. 
+```{r missing from old}
+courses_new_included %>% filter(Included == F)
+```
+To be thorow, let us check which old courses are not in the new courses:
+```{r}
+courses_old_included <- tibble(Course = courses$`Course ID`) %>%
+  mutate(Included = case_when(Course %in% new_courses$Course~T,
+         T~F))
+#Check to see how many are included and not included:
+table(courses_old_included$Included)
+```
+We have 32 discontinued courses:
+```{r discontinued}
+
+```
+
+```{r}
+research <- rep(courses$`Course ID`, each = 14)
+research_methodology <- tibble(`Course ID` = research) %>% 
+  mutate(Task = rep(1:14, times = length(`Course ID`)/14))
+
+write_excel_csv(courses,path = "~/Documents/Summer UCM/Methodology/ResearchMethodologies.csv")
+```
+
