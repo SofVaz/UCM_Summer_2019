@@ -239,11 +239,56 @@ d_level_plots %>%
  For each of the ILOs the verb describing what the student is intended to learn was extracted manually. This created a distiction between the course verb and the student verb. For instance, for the ILO "to provide students with [...] perspectives to examine..." (COR1004, p.1) the extracted verb is "[to] examine".
  
 Let's have a look at all the verbs I extracted:
-```{r}
-verbs1 <- ilo_data$Verb_used_1 %>% unique()
-verbs2 <- ilo_data$Verb_used_2 %>% unique()
-verbs3 <- ilo_data$Verd_used_3 %>% unique() ####AHHHH SPELLING MISTAKE
-c(verbs1,verbs2,verbs3) %>% unique
+```{r clean verbs data}
+ilo_data_clean <- ilo_data %>% gather(key = tmp_place, value = Verb, Verb_used_1:Verd_used_3) %>% select(-tmp_place)
+
+dirty_verbs <- ilo_data_clean %>% pull(Verb) %>% unique()
+dirty_verbs
 ```
 as you can see some are really similar, for example, we have: "to understand", "understand" and "basic understanding". Let's group all of these together.
+```{r collapse or}
+collapse_or <- function(string_vector){
+  paste(string_vector, collapse ="|")
+}
+```
+
+For understanding:
+```{r cleaning}
+#UNDERSTAND
+understand_equivalence <- ilo_data_clean %>% filter(str_detect(Verb, "understa")) %>% pull(Verb) %>% unique()
+print(paste('The verbs that were taken to be the same as "understand" are:', paste(understand_equivalence, collapse = ", "), sep = " "))
+
+#KNOW
+know_equivalence <- ilo_data_clean %>% filter(str_detect(Verb, "know")) %>% pull(Verb) %>% unique()
+print(paste('The verbs that were taken to be the same as "know" are:', paste(know_equivalence, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
+
+#[GAIN] FAMILIARITY
+familiarize_equivalence <- ilo_data_clean %>% filter(str_detect(Verb, "familia")) %>% pull(Verb) %>% unique()
+print(paste('The verbs that were taken to be the same as "[gain] familiarity" are:', paste(familiarize_equivalence, collapse = ", "), sep = " "))
+
+
+```
+NOTES:"gain basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
+```{r cleaning other verbs}
+standardize_knowing <- function(string){
+  str_replace(string, "to know|to have knowledge|basic knowledge", "know")
+}
+
+standardize_understand <- function(string){
+  str_replace(string, "to understand|to develop understanding|gain understanding|basic understanding", "understand")
+}
+
+standardize_familiarity <- function(string){
+  str_replace(string, "to familiarize|to develop understanding|gain understanding|basic understanding", "understand")
+}
+
+ilo_data_clean <- ilo_data
+
+ilo_data_clean <- fhhf
+
+ilo_data_clean %>% transmute(Verb_used_1 = map_chr(Verb_used_1, standardize_knowing),
+                             Verb_used_1 = map_chr(Verb_used_1, standardize_understand)) %>%
+  distinct()
+
+```
 
