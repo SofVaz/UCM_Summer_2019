@@ -18,7 +18,7 @@ library(tidytext)
 library(udpipe) #language model
 ```
 #Introduction
-In this section we give a basic overview of our data.
+In this section I give a basic overview of our data.
 ##Import data
 ```{r import}
 ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA"))
@@ -86,18 +86,26 @@ ilo_data %>% filter(is.na(`Course_Intention/Student_profile`)) %>% select(Course
 ```
 
 ##Basic Text analysis
-Here is a very basic count of words that appear:
-```{r basic word counts}
-basic_word_counts <- ilo_data %>% 
-  select(Course, ILO) %>% 
-  unnest_tokens(word, ILO) %>% 
-  count(word) %>% 
-  arrange(desc(n))
+I count the appearance of words accross all courses, and add that number to the dataframe. 
+```{r count words}
+ilo_unnested <-  ilo_data %>% 
+  select(Course, ILO, Level, Concentration) %>% 
+  unnest_tokens(word, ILO)
 
-basic_word_counts
+basic_word_counts <- ilo_unnested %>% 
+  count(word)
+
+ilo_word_counts <- ilo_unnested %>% left_join(basic_word_counts, by = "word")
+
+ilo_word_counts
 ```
 
-I will manually remove some of the common words: prepositions and conjunctions:
+Here is the very basic count of words that appear:
+```{r basic word count}
+basic_word_counts
+```
+###Classes of words
+I will manually remove some of the common words such as prepositions and conjunctions:
 ```{r my_stopwords}
 prepositions <- c(
       "with", "at", "from", "into", "during", "including", "until", "against", "among", "throughout",
@@ -157,8 +165,36 @@ x <- data.frame(s) %>% select(token, upos, xpos)
 
 rm(english_lang_model, udmodel_english, s)
 ```
-```{r english model}
-verbs_in_ilos <- basic_word_counts %>% left_join(x, by = c("word" = "token")) %>%
+Annotating the data based on the language model:
+```{r annotate data}
+annotated_data <- ilo_word_counts %>% left_join(x, by = c("word" = "token"))
+```
+Filtering for verbs:
+```{r verbs in all courses}
+verbs_in_ilos <- annotated_data %>%
+  filter(upos == "VERB") 
+
+verbs_unrepeated <- verbs_in_ilos %>% 
+  select(word, n) %>%
+  distinct()
+
+verbs_unrepeated[1:20,] %>% ggplot(aes(x = reorder(word,-n), y = n))+
+  geom_histogram(stat = "identity", fill = "navy")+
+  labs(title = "Most Common Verbs", x = "Verb", y = "Number of appearances")+
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+####Breakdown by Level
+Using universal word counts:
+```{r level break down}
+data_breakdown <- 
+  verbs_in_ilos %>% 
+  group_by(Level) %>% 
+  select(Level, word, n) %>%
+  distinct
+  
+
+data_breakdown %>% map(data, )<- basic_word_counts %>% left_join(x, by = c("word" = "token")) %>%
   filter(upos == "VERB")
 
 verbs_in_ilos[1:20,] %>% ggplot(aes(x = reorder(word,-n), y = n))+
@@ -166,9 +202,12 @@ verbs_in_ilos[1:20,] %>% ggplot(aes(x = reorder(word,-n), y = n))+
   labs(title = "Most Common Verbs", x = "Verb", y = "Number of appearances")+
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-####Breakdown by Level
-```{r}
 
+
+basic_word_counts <- ilo_data %>% 
+  select(Course, ILO) %>% 
+  unnest_tokens(word, ILO) %>% 
+  count(word) %>% 
+  arrange(desc(n))
 ```
 
