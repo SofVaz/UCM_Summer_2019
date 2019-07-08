@@ -23,6 +23,10 @@ In this section we give a basic overview of our data.
 ```{r import}
 ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA"))
 ```
+```{r add course level and concentration label}
+ilo_data <- ilo_data %>% mutate(Level = str_sub(Course, start = 4, end = 4), Concentration = str_sub(Course, start = 1, end = 3))
+```
+
 ##Number of courses
 I have data for: 
 ```{r number of courses}
@@ -162,5 +166,9 @@ verbs_in_ilos[1:20,] %>% ggplot(aes(x = reorder(word,-n), y = n))+
   labs(title = "Most Common Verbs", x = "Verb", y = "Number of appearances")+
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+####Breakdown by Level
+```{r}
+
 ```
 
