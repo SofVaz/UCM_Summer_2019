@@ -1,0 +1,166 @@
+---
+title: "ILO summary"
+author: "DARS"
+date: "6/26/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Libraries
+```{r libraries, include = F}
+library(tidyverse)
+library(stringr)
+library(readxl)
+library(tidytext)
+library(udpipe) #language model
+```
+#Introduction
+In this section we give a basic overview of our data.
+##Import data
+```{r import}
+ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA"))
+```
+##Number of courses
+I have data for: 
+```{r number of courses}
+no_courses <- ilo_data %>% select(Course) %>% unique() %>% count() %>% pull(n)
+print(no_courses)
+
+rm(no_courses)
+```
+these do not include the projects. 
+
+##Distribution of ILO per course
+```{r distribution of ILOs per course}
+ilo_data %>% 
+  mutate(not_empty = !is.na(ILO)) %>% 
+  group_by(Course) %>%
+  summarise(Number_ilos = sum(not_empty)) %>%
+  count(Number_ilos) %>% 
+  ggplot(aes(x = Number_ilos, y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title= "Distribution of ILOs per Course", x = "Number of ILOs", y = "Number of Courses") +
+  coord_flip() +
+  theme_minimal()
+```
+###Total number of ILOS
+```{r total number of ILOs}
+ilo_data %>% 
+  transmute(not_empty = !is.na(ILO)) %>% summarize(total_ilos = sum(not_empty))
+```
+
+##Course vs Student orientation
+ILOs are formulated either as student learning goals or course objectives:
+```{r course orientation}
+ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
+  ggplot(aes(x = `Course_Intention/Student_profile`, y = n, label = n)) +
+  geom_histogram(stat = "identity", fill = "navy")+
+  geom_text(vjust = -0.5) +
+  labs(title = "ILO formulation orientation", x = "Course (C) vs Student (S) Orientation", y = "Number of ILOs")+
+  theme_classic()
+  
+```
+in percentages:
+```{r orientation percentage}
+ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
+  ungroup() %>%
+  mutate(percentage = n*100/sum(n)) %>%
+  ggplot(aes(x = `Course_Intention/Student_profile`, y = percentage, label = round(percentage))) +
+  geom_histogram(stat = "identity", fill = "navy")+
+  geom_text(vjust = -0.5) +
+  labs(title = "ILO formulation orientation", x = "Course (C) vs Student (S) Orientation", y = "Percentage of ILOs")+
+  theme_classic()
+  
+```
+
+the ILOs I did not know how to classify are:
+```{r Orientation unclear}
+ilo_data %>% filter(is.na(`Course_Intention/Student_profile`)) %>% select(Course, ILO)
+```
+
+##Basic Text analysis
+Here is a very basic count of words that appear:
+```{r basic word counts}
+basic_word_counts <- ilo_data %>% 
+  select(Course, ILO) %>% 
+  unnest_tokens(word, ILO) %>% 
+  count(word) %>% 
+  arrange(desc(n))
+
+basic_word_counts
+```
+
+I will manually remove some of the common words: prepositions and conjunctions:
+```{r my_stopwords}
+prepositions <- c(
+      "with", "at", "from", "into", "during", "including", "until", "against", "among", "throughout",
+      "despite", "towards", "upon", "concerning", "to", "in", "for", "of", "on", "by", "about", "like", "through",
+      "over","before", "between", "after","since","without", "under", "within","along","following", "across",
+      "behind","beyond", "plus", "except", "but", "up","out", "around", "down", "off", "above", "near"
+)
+
+conjunctions <- c("and", "or", "but","nor", "for","yet", "after", "although", "as", "because", "before","even", "once", "since", "though", "till", "unless", "until", "what", "when", "whenever", "wherever", "whether","while")
+
+determiners <- c("this", "that", "these", "those")
+
+articles <- c("the", "a", "an")
+
+pronouns <- c("it", "one", "you", "we", "they",
+              "his", "hers", "ours", "their")
+
+my_stopwords <- c(word = c(prepositions, conjunctions, articles, determiners, pronouns))
+
+#Clean workspace
+rm(prepositions, conjunctions, articles, determiners, pronouns)
+```
+removing common words:
+```{r remove stopwords}
+basic_word_counts %>%
+  filter(!str_detect(word,"[0-9]+")) %>% #remove numbers
+  filter(! word %in% my_stopwords)
+```
+###Universal part of speech
+Alternatively, we should check out this package, created by the Institute of Formal and Applied Linguistics of Charles University, Czech Republic at the Faculty of Mathematics and Physics. http://ufal.mff.cuni.cz/udpipe 
+
+Lables are as follows: 
+ADJ: adjective
+ADP: adposition
+ADV: adverb
+AUX: auxiliary
+CCONJ: coordinating conjunction
+DET: determiner
+INTJ: interjection
+NOUN: noun
+NUM: numeral
+PART: particle
+PRON: pronoun
+PROPN: proper noun
+PUNCT: punctuation
+SCONJ: subordinating conjunction
+SYM: symbol
+VERB: verb
+X: other
+```{r language model}
+# library(udpipe)
+
+english_lang_model <- udpipe_download_model(language = "english")
+udmodel_english <- udpipe_load_model(file = english_lang_model$file_model)
+s <- udpipe_annotate(udmodel_english, basic_word_counts$word)
+x <- data.frame(s) %>% select(token, upos, xpos)
+
+rm(english_lang_model, udmodel_english, s)
+```
+```{r english model}
+verbs_in_ilos <- basic_word_counts %>% left_join(x, by = c("word" = "token")) %>%
+  filter(upos == "VERB")
+
+verbs_in_ilos[1:20,] %>% ggplot(aes(x = reorder(word,-n), y = n))+
+  geom_histogram(stat = "identity", fill = "navy")+
+  labs(title = "Most Common Verbs", x = "Verb", y = "Number of appearances")+
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
