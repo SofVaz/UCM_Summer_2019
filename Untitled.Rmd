@@ -92,12 +92,12 @@ ilo_unnested <-  ilo_data %>%
   select(Course, ILO, Level, Concentration) %>% 
   unnest_tokens(word, ILO)
 
-basic_word_counts <- ilo_unnested %>% 
-  count(word)
+# basic_word_counts <- ilo_unnested %>% 
+#   count(word)
 
-ilo_word_counts <- ilo_unnested %>% left_join(basic_word_counts, by = "word")
-
-ilo_word_counts
+# ilo_word_counts <- ilo_unnested %>% left_join(basic_word_counts, by = "word")
+# 
+# ilo_word_counts
 ```
 
 Here is the very basic count of words that appear:
@@ -160,54 +160,90 @@ X: other
 
 english_lang_model <- udpipe_download_model(language = "english")
 udmodel_english <- udpipe_load_model(file = english_lang_model$file_model)
-s <- udpipe_annotate(udmodel_english, basic_word_counts$word)
-x <- data.frame(s) %>% select(token, upos, xpos)
+s <- udpipe_annotate(udmodel_english, ilo_unnested$word)
+x <- data.frame(s) %>% select(token, upos, xpos) %>% distinct()
 
-rm(english_lang_model, udmodel_english, s)
+#rm(english_lang_model, udmodel_english, s)
 ```
 Annotating the data based on the language model:
 ```{r annotate data}
-annotated_data <- ilo_word_counts %>% left_join(x, by = c("word" = "token"))
+annotated_ilo <- ilo_unnested %>% left_join(x, by = c("word" = "token"))
 ```
 Filtering for verbs:
 ```{r verbs in all courses}
 verbs_in_ilos <- annotated_data %>%
   filter(upos == "VERB") 
-
-verbs_unrepeated <- verbs_in_ilos %>% 
+```
+Universal Verb counts
+```{r verb counts}
+verbs_unrepeated <- verbs_in_ilos %>%
+  group_by(word) %>%
+  mutate(n = n()) %>%
   select(word, n) %>%
   distinct()
 
-verbs_unrepeated[1:20,] %>% ggplot(aes(x = reorder(word,-n), y = n))+
+verbs_unrepeated %>%
+  top_n(n = 20, wt = n) %>%
+  ungroup() %>%
+  .[1:20,] %>%
+  ggplot(aes(x = reorder(word,-n), y = n))+
   geom_histogram(stat = "identity", fill = "navy")+
   labs(title = "Most Common Verbs", x = "Verb", y = "Number of appearances")+
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
 ####Breakdown by Level
-Using universal word counts:
 ```{r level break down}
-data_breakdown <- 
-  verbs_in_ilos %>% 
-  group_by(Level) %>% 
+verbs_unrepeated <- verbs_in_ilos %>%
+  group_by(Level, word) %>%
+  mutate(n = n()) %>%
   select(Level, word, n) %>%
-  distinct
+  distinct()
+
+d_level_plots <- verbs_unrepeated %>% 
+  group_by(Level) %>%
+  top_n(n = 20, wt = n) %>%
+  ungroup()
+
+#Level 1000
+d_level_plots %>%
+  filter(Level == 1) %>%
+  ggplot(aes(x = reorder(word,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Most Common Verbs for 1000 Level", x = "Verb", y = "Number of appearances")+
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
   
-
-data_breakdown %>% map(data, )<- basic_word_counts %>% left_join(x, by = c("word" = "token")) %>%
-  filter(upos == "VERB")
-
-verbs_in_ilos[1:20,] %>% ggplot(aes(x = reorder(word,-n), y = n))+
-  geom_histogram(stat = "identity", fill = "navy")+
-  labs(title = "Most Common Verbs", x = "Verb", y = "Number of appearances")+
+#Level2000
+d_level_plots %>%
+  filter(Level == 2) %>%
+  ggplot(aes(x = reorder(word,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Most Common Verbs for 2000 Level", x = "Verb", y = "Number of appearances")+
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+#Level3000
+d_level_plots %>%
+  filter(Level == 3) %>%
+  ggplot(aes(x = reorder(word,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Most Common Verbs for 3000 Level", x = "Verb", y = "Number of appearances")+
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-basic_word_counts <- ilo_data %>% 
-  select(Course, ILO) %>% 
-  unnest_tokens(word, ILO) %>% 
-  count(word) %>% 
-  arrange(desc(n))
 ```
+
+#Manual analysis display
+ For each of the ILOs the verb describing what the student is intended to learn was extracted manually. This created a distiction between the course verb and the student verb. For instance, for the ILO "to provide students with [...] perspectives to examine..." (COR1004, p.1) the extracted verb is "[to] examine".
+ 
+Let's have a look at all the verbs I extracted:
+```{r}
+verbs1 <- ilo_data$Verb_used_1 %>% unique()
+verbs2 <- ilo_data$Verb_used_2 %>% unique()
+verbs3 <- ilo_data$Verd_used_3 %>% unique() ####AHHHH SPELLING MISTAKE
+c(verbs1,verbs2,verbs3) %>% unique
+```
+as you can see some are really similar, for example, we have: "to understand", "understand" and "basic understanding". Let's group all of these together.
 
