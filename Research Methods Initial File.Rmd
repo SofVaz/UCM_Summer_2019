@@ -72,6 +72,7 @@ courses_all <- tibble(Course = courses$`Course ID`) %>%
 
 courses_all
 ```
+#Research Methodology Document (Tasks and articles)
 Now, we would like to see what research methodology is used in each course, per task. For this we need a spreadhseet with all courses split into tasks. Generally there are 12 tasks but to be on the save side, lets say there are 14 tasks. 
 We also want to be able to track the methodology to each article. I will assume that there are 10 articles per task.
 
@@ -86,7 +87,19 @@ research_methodology <- expand.grid(articles, tasks, course_codes) %>%
   select(Course, Task, Article)
 
 
-write_excel_csv(research_methodology, path = "~/Documents/Summer UCM/Methodology/ResearchMethodologies.csv")
+write_excel_csv(research_methodology, path = "~/Documents/Summer UCM/Methodology/ResearchMethodologies_Articles.csv")
+
+research_methodology
 ```
 
 We open the csv on excel and save it as an excel sheet
+
+#Research Methodology Document (Taught Courses)
+I'll create a second research methodology spreadsheet for every course
+```{r}
+rm_past_present <- tibble(Course = course_codes)
+
+write_excel_csv(rm_past_present, path = "~/Documents/Summer UCM/Methodology/ResearchMethodologies_courses.csv" )
+
+```
+
