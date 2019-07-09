@@ -236,16 +236,28 @@ d_level_plots %>%
 ```
 
 #Manual analysis display
- For each of the ILOs the verb describing what the student is intended to learn was extracted manually. This created a distiction between the course verb and the student verb. For instance, for the ILO "to provide students with [...] perspectives to examine..." (COR1004, p.1) the extracted verb is "[to] examine".
+For each of the ILOs the verb describing what the student is intended to learn was extracted manually. This created a distiction between the course verb and the student verb. For instance, for the ILO "to provide students with [...] perspectives to examine..." (COR1004, p.1) the extracted verb is "[to] examine".
  
-Let's have a look at all the verbs I extracted:
-```{r clean verbs data}
-ilo_data_clean <- ilo_data %>% gather(key = tmp_place, value = Verb, Verb_used_1:Verd_used_3) %>% select(-tmp_place)
+Let's have a look at all the verbs I extracted.
 
+First, I clean the data to have all verbs in one column. I replace `NA` with a character (`"NaN"`) to be able to remove `NA`s created by `gather`, after those have been filtered out, I return `"NaN"` to `NA`.
+```{r clean ilo data}
+ilo_data_clean <- ilo_data %>% 
+  mutate(Verb_used_1 = case_when(is.na(Verb_used_1)~"NaN",
+                                            T~Verb_used_1))      %>%
+  gather(key = tmp_place, value = Verb, Verb_used_1:Verd_used_3) %>% 
+  select(-tmp_place) %>% 
+  filter(!is.na(Verb)) %>% 
+  mutate(Verb = map_chr(Verb, function(x) str_replace(x,"NaN",NA_character_)))
+```
+
+```{r dirty verbs}
 dirty_verbs <- ilo_data_clean %>% pull(Verb) %>% unique()
 dirty_verbs
 ```
-as you can see some are really similar, for example, we have: "to understand", "understand" and "basic understanding". Let's group all of these together.
+as you can see some verbs are really similar, for example, we have: "to understand", "understand" and "basic understanding". Let's group all of these together.
+
+We will need an or function to help with regular expressions:
 ```{r collapse or}
 collapse_or <- function(string_vector){
   paste(string_vector, collapse ="$|^")
@@ -286,7 +298,7 @@ NOTES:
  * "gain basic practial knowledge" and "use knowledge" might not be correct under "know" rather in "apply". 
  * "think analytically" and "reason analyticaly" don't have a clear interpretation to me. 
 
-We notice that some of the words recognized by are not quite equivalent. We create equivalent classes:
+We notice that some of the words recognized by are not quite equivalent. Therefore, I create equivalent classes for filtering:
 ```{r equivanlent classes}
 #UNDERSTAND
 understand_equivalence <- setdiff(understand_eq, c(""))
@@ -317,7 +329,7 @@ acquainted_equivalence <- setdiff(acquainted_eq, c(""))
 print(paste('The verbs that were taken to be the same as "[get] acquainted" are:', paste(acquainted_equivalence, collapse = ", "), sep = " "))
 
 ```
-
+Next, I create standardizing functions that use those equivalent classes to replace all verbs in the same class for a single verb.
 ```{r cleaning other verbs}
 #Clean functions
 remove_to <- function(string){
@@ -353,20 +365,22 @@ standardize_acquainted <- function(string){
   str_replace(string, collapse_or(acquainted_equivalence), "[get] acquainted")
 }
 ```
-
+Finally, I standardize the data by applying our functions so all verbs in equivalent classes are mapped to the same verb. Now, our data is clean.
 ```{r apply standarization}
-ilo_data_clean %>% mutate(
-  Verb = map_chr(Verb, standardize_knowing),
-  Verb = map_chr(Verb, standardize_understand),
-  Verb = map_chr(Verb, standardize_familiarity),
-  Verb = map_chr(Verb, standardize_analyse),
-  Verb = map_chr(Verb, standardize_introduce),
-  Verb = map_chr(Verb, standardize_overview),
-  Verb = map_chr(Verb, standardize_acquainted),
-  Verb = map_chr(Verb, function(string) str_replace(string, "to ", "")),
-  Verb = map_chr(Verb, function(string) str_replace(string, "^na$", NA_character_))
-  ) %>%
-  distinct() %>% arrange(Verb) %>% View()
-
+ilo_data_clean <- ilo_data_clean %>% 
+  mutate(
+    Verb = map_chr(Verb, standardize_knowing),
+    Verb = map_chr(Verb, standardize_understand),
+    Verb = map_chr(Verb, standardize_familiarity),
+    Verb = map_chr(Verb, standardize_analyse),
+    Verb = map_chr(Verb, standardize_introduce),
+    Verb = map_chr(Verb, standardize_overview),
+    Verb = map_chr(Verb, standardize_acquainted),
+    Verb = map_chr(Verb, function(string) str_replace(string, "to ", "")) #,
+    #Verb = map_chr(Verb, function(string) str_replace(string, "^na$", NA_character_)) #this should not be necessary anymore.
+  ) 
+```
+```{r}
+ilo_data_clean %>% View()
 ```
 
