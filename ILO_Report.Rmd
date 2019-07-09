@@ -1,5 +1,5 @@
 ---
-title: "ILO summary"
+title: "ILO summary- Week 1 Report"
 author: "Sofia Vazquez Alferez (DARS, University College Maastricht"
 date: "08/07/2019"
 output: html_document
@@ -36,14 +36,16 @@ This document presents a brief overview of the current state of the *Intended Le
 3. A description of how the objectives map to Bloom's Taxonomy of learning  
 4. Recommendations  
 
-#Introduction *(What was used)*
-For this analysis I used the *ILOs* for the year 2018/2019 provided by Edith. The *ILOs* of the projects (PRO) were missing from this file, and have therefore not been included in the subsequent analysis. The data contained a total of `r no_courses`courses, which amounted to `r no_ilo_plus_1 -1` *ILOs*.  
+#Introduction *A brief overview of our data*
+For this analysis I used the *ILOs* for the year *2018/2019* provided by Edith. The *ILOs* of the projects (PRO) were missing from this file, and have therefore not been included in the subsequent analysis. I did have the *ILOs* for the Undergraduate Research Projects (UGR), so these are inlcuded.  
+The data contained a total of **`r no_courses`** **courses**, which amounted to **`r no_ilo_plus_1 -1`** **ILOs**.
 ```{r clean workspace 1}
 rm(no_courses,no_ilo_plus_1)
 ```
 
 ##Distribution of ILO per course
-```{r distribution of ILOs per course}
+In general, the courses had an average of `r round(no_ilo_plus_1/no_courses,1)` *ILOs* per course. Which were distributed as follows:
+```{r distribution of ILOs per course, warning = FALSE}
 ilo_data %>% 
   mutate(not_empty = !is.na(ILO)) %>% 
   group_by(Course) %>%
@@ -51,18 +53,22 @@ ilo_data %>%
   count(Number_ilos) %>% 
   ggplot(aes(x = Number_ilos, y = n)) +
   geom_histogram(stat = "identity", fill = "navy") +
-  labs(title= "Distribution of ILOs per Course", x = "Number of ILOs", y = "Number of Courses") +
+  labs(title= "Distribution of ILOs per Course", x = "Number of ILOs", y = "Number of Courses (with said number of ILOs)") +
   coord_flip() +
   theme_minimal()
 ```
-###Total number of ILOS
-```{r total number of ILOs}
-ilo_data %>% 
-  transmute(not_empty = !is.na(ILO)) %>% summarize(total_ilos = sum(not_empty))
-```
+A breakdown by Level and Concentration gives:
+[to be added]
 
-##Course vs Student orientation
-ILOs are formulated either as student learning goals or course objectives:
+##Orientation of Language
+It was possible to distinguish two categories in the way *ILOs* were formulated. *ILOs* were either as student (S) oriented or course (C) oriented.
+**Student oriented** *ILOs* described what the student was supposed to achieve or have learned during the course, whilst **course oriented** *ILOs* described the aims of the course. For example:  
+* Student Oriented *ILO*: ""().  
+* Course Oriented *ILO*: ""().
+
+Some courses had *ILOs* formulated in both a student and a course oriented way. 
+
+In general, this is what we have in the curriculum in raw numbers:
 ```{r course orientation}
 ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
   ggplot(aes(x = `Course_Intention/Student_profile`, y = n, label = n)) +
@@ -72,7 +78,7 @@ ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Int
   theme_classic()
   
 ```
-in percentages:
+In percentages, we have the following::
 ```{r orientation percentage}
 ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
   ungroup() %>%
@@ -80,13 +86,12 @@ ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Int
   ggplot(aes(x = `Course_Intention/Student_profile`, y = percentage, label = round(percentage))) +
   geom_histogram(stat = "identity", fill = "navy")+
   geom_text(vjust = -0.5) +
-  labs(title = "ILO formulation orientation", x = "Course (C) vs Student (S) Orientation", y = "Percentage of ILOs")+
+  labs(title = "ILO formulation orientation", x = "Course (C) vs Student (S) Orientation", y = "Percentage of ILOs [rounded]")+
   theme_classic()
   
 ```
-
-the ILOs I did not know how to classify are:
-```{r Orientation unclear}
+The `NA` category represents courses that I did not classify in any of those categories. They were the following *ILOs*:
+```{r Orientation unclear, results = "asis"}
 ilo_data %>% filter(is.na(`Course_Intention/Student_profile`)) %>% select(Course, ILO)
 ```
 
