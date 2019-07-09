@@ -101,8 +101,8 @@ ilo_unnested <-  ilo_data %>%
 ```
 
 Here is the very basic count of words that appear:
-```{r basic word count}
-basic_word_counts
+```{r basic word count, eval = F}
+#basic_word_counts
 ```
 ###Classes of words
 I will manually remove some of the common words such as prepositions and conjunctions:
@@ -129,7 +129,7 @@ my_stopwords <- c(word = c(prepositions, conjunctions, articles, determiners, pr
 rm(prepositions, conjunctions, articles, determiners, pronouns)
 ```
 removing common words:
-```{r remove stopwords}
+```{r remove stopwords, eval = F}
 basic_word_counts %>%
   filter(!str_detect(word,"[0-9]+")) %>% #remove numbers
   filter(! word %in% my_stopwords)
@@ -171,11 +171,11 @@ annotated_ilo <- ilo_unnested %>% left_join(x, by = c("word" = "token"))
 ```
 Filtering for verbs:
 ```{r verbs in all courses}
-verbs_in_ilos <- annotated_data %>%
+verbs_in_ilos <- annotated_ilo %>%
   filter(upos == "VERB") 
 ```
 Universal Verb counts
-```{r verb counts}
+```{r verb counts basic text analysis}
 verbs_unrepeated <- verbs_in_ilos %>%
   group_by(word) %>%
   mutate(n = n()) %>%
@@ -268,23 +268,23 @@ First find similarities
 ```{r search for equivalence}
 #UNDERSTAND
 understand_eq <- ilo_data_clean %>% filter(str_detect(Verb, "understa")) %>% pull(Verb) %>% unique()
-print(paste('"understand":', paste(understand_equivalence, collapse = ", "), sep = " "))
+print(paste('"understand":', paste(understand_eq, collapse = ", "), sep = " "))
 
 #KNOW
 know_eq <- ilo_data_clean %>% filter(str_detect(Verb, "know")) %>% pull(Verb) %>% unique()
-print(paste('"know":', paste(know_equivalence, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
+print(paste('"know":', paste(know_eq, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
 
 #[GAIN] FAMILIARITY
 familiarise_eq <- ilo_data_clean %>% filter(str_detect(Verb, "familia")) %>% pull(Verb) %>% unique()
-print(paste('"[gain] familiarity":', paste(familiarise_equivalence, collapse = ", "), sep = " "))
+print(paste('"[gain] familiarity":', paste(familiarise_eq, collapse = ", "), sep = " "))
 
 #ANALYSE
 analyse_eq <- ilo_data_clean %>% filter(str_detect(Verb, "analy")) %>% pull(Verb) %>% unique()
-print(paste('"analyse":', paste(analyse_equivalence, collapse = ", "), sep = " "))
+print(paste('"analyse":', paste(analyse_eq, collapse = ", "), sep = " "))
 
 #[BE] INTRODUCED
 introduce_eq <- ilo_data_clean %>% filter(str_detect(Verb, "introd")) %>% pull(Verb) %>% unique()
-print(paste('"[be] introduced":', paste(introduce_equivalence, collapse = ", "), sep = " "))
+print(paste('"[be] introduced":', paste(introduce_eq, collapse = ", "), sep = " "))
 
 #[GET] OVERVIEW
 overview_eq <- ilo_data_clean %>% filter(str_detect(Verb, "overv")) %>% pull(Verb) %>% unique()
@@ -295,8 +295,8 @@ acquainted_eq <- ilo_data_clean %>% filter(str_detect(Verb, "acquain")) %>% pull
 print(paste('"[get] acquainted":', paste(acquainted_eq, collapse = ", "), sep = " "))
 ```
 NOTES:
- * "gain basic practial knowledge" and "use knowledge" might not be correct under "know" rather in "apply". 
- * "think analytically" and "reason analyticaly" don't have a clear interpretation to me. 
+ *"gain basic practial knowledge" and "use knowledge" might not be correct under "know" rather in "apply". 
+ *"think analytically" and "reason analyticaly" don't have a clear interpretation to me. 
 
 We notice that some of the words recognized by are not quite equivalent. Therefore, I create equivalent classes for filtering:
 ```{r equivanlent classes}
@@ -412,7 +412,7 @@ we have 856 verbs (objectives).
 ###Graphs
 ####Universal Verbs
 Universal use of verbs:
-```{r verb counts}
+```{r verb counts maunal text analysis}
 verbs_unrepeated <- ilo_data_clean %>%
   group_by(Verb)  %>%
   mutate(n = n()) %>%
@@ -433,7 +433,7 @@ verbs_unrepeated        %>%
 ```
 
 ####Breakdown by Level
-```{r level break down}
+```{r level break down manual text analysis}
 verbs_unrepeated <- ilo_data_clean %>%
   group_by(Level, Verb)            %>%
   mutate(n = n())                  %>%
