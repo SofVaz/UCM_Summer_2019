@@ -380,7 +380,98 @@ ilo_data_clean <- ilo_data_clean %>%
     #Verb = map_chr(Verb, function(string) str_replace(string, "^na$", NA_character_)) #this should not be necessary anymore.
   ) 
 ```
-```{r}
+Lets see what I ended up with:
+```{r view clean ilos}
 ilo_data_clean %>% View()
+
 ```
+
+Time for some summary graphs and summary statistics:
+###Summary Statistics
+####Total verbs in ILOs:
+```{r}
+total_objectives <- ilo_data_clean %>% group_by(ILO) %>% mutate(Verbs_per_ILO = n()) %>%
+  
+# for verification join with:
+# %>% arrange(Course, ILO) %>% select(Course, Verbs_per_ILO, Verb, ILO, everything())
+  ungroup() %>%
+  select(Course, Level, Concentration, ILO, Verbs_per_ILO) %>% 
+  distinct() %>%
+  group_by(Course) %>%
+  mutate(ilo_per_course = n(),
+         verbs_per_course = sum(Verbs_per_ILO)) %>%
+  select(Course, verbs_per_course) %>%
+  distinct() %>%
+  ungroup() %>%
+  summarize(total = sum(verbs_per_course)) %>%
+  pull(total)
+
+total_objectives
+```
+we have 856 verbs (objectives).
+###Graphs
+####Universal Verbs
+Universal use of verbs:
+```{r verb counts}
+verbs_unrepeated <- ilo_data_clean %>%
+  group_by(Verb)  %>%
+  mutate(n = n()) %>%
+  select(Verb, n) %>%
+  distinct()      %>%
+  filter(!is.na(Verb)) #REMOVE NA
+
+verbs_unrepeated        %>%
+  top_n(n = 20, wt = n) %>%
+  arrange(desc(n))      %>%    
+  ungroup()             %>%
+  .[1:20,]              %>%
+  ggplot(aes(x = reorder(Verb,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Most Common Verbs across all Courses", x = "Verb", y = "Number of appearances") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+####Breakdown by Level
+```{r level break down}
+verbs_unrepeated <- ilo_data_clean %>%
+  group_by(Level, Verb)            %>%
+  mutate(n = n())                  %>%
+  select(Level, Verb, n)           %>%
+  distinct()
+
+d_level_plots <- verbs_unrepeated %>% 
+  group_by(Level)                 %>%
+  top_n(n = 20, wt = n)           %>%
+  ungroup()
+
+#Level 1000
+d_level_plots %>%
+  filter(Level == 1) %>%
+  ggplot(aes(x = reorder(Verb,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Most Common Verbs for 1000 Level", x = "Verb", y = "Number of appearances")+
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+#Level2000
+d_level_plots %>%
+  filter(Level == 2) %>%
+  ggplot(aes(x = reorder(Verb,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Most Common Verbs for 2000 Level", x = "Verb", y = "Number of appearances")+
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Level3000
+d_level_plots %>%
+  filter(Level == 3) %>%
+  ggplot(aes(x = reorder(Verb,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Most Common Verbs for 3000 Level", x = "Verb", y = "Number of appearances")+
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
 
