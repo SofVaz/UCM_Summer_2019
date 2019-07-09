@@ -248,47 +248,125 @@ dirty_verbs
 as you can see some are really similar, for example, we have: "to understand", "understand" and "basic understanding". Let's group all of these together.
 ```{r collapse or}
 collapse_or <- function(string_vector){
-  paste(string_vector, collapse ="|")
+  paste(string_vector, collapse ="$|^")
 }
 ```
 
-For understanding:
-```{r cleaning}
+First find similarities
+```{r search for equivalence}
 #UNDERSTAND
-understand_equivalence <- ilo_data_clean %>% filter(str_detect(Verb, "understa")) %>% pull(Verb) %>% unique()
+understand_eq <- ilo_data_clean %>% filter(str_detect(Verb, "understa")) %>% pull(Verb) %>% unique()
+print(paste('"understand":', paste(understand_equivalence, collapse = ", "), sep = " "))
+
+#KNOW
+know_eq <- ilo_data_clean %>% filter(str_detect(Verb, "know")) %>% pull(Verb) %>% unique()
+print(paste('"know":', paste(know_equivalence, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
+
+#[GAIN] FAMILIARITY
+familiarise_eq <- ilo_data_clean %>% filter(str_detect(Verb, "familia")) %>% pull(Verb) %>% unique()
+print(paste('"[gain] familiarity":', paste(familiarise_equivalence, collapse = ", "), sep = " "))
+
+#ANALYSE
+analyse_eq <- ilo_data_clean %>% filter(str_detect(Verb, "analy")) %>% pull(Verb) %>% unique()
+print(paste('"analyse":', paste(analyse_equivalence, collapse = ", "), sep = " "))
+
+#[BE] INTRODUCED
+introduce_eq <- ilo_data_clean %>% filter(str_detect(Verb, "introd")) %>% pull(Verb) %>% unique()
+print(paste('"[be] introduced":', paste(introduce_equivalence, collapse = ", "), sep = " "))
+
+#[GET] OVERVIEW
+overview_eq <- ilo_data_clean %>% filter(str_detect(Verb, "overv")) %>% pull(Verb) %>% unique()
+print(paste('"[get] overview":', paste(overview_eq, collapse = ", "), sep = " "))
+
+#[GET] ACQUAINTED
+acquainted_eq <- ilo_data_clean %>% filter(str_detect(Verb, "acquain")) %>% pull(Verb) %>% unique()
+print(paste('"[get] acquainted":', paste(acquainted_eq, collapse = ", "), sep = " "))
+```
+NOTES:
+ * "gain basic practial knowledge" and "use knowledge" might not be correct under "know" rather in "apply". 
+ * "think analytically" and "reason analyticaly" don't have a clear interpretation to me. 
+
+We notice that some of the words recognized by are not quite equivalent. We create equivalent classes:
+```{r equivanlent classes}
+#UNDERSTAND
+understand_equivalence <- setdiff(understand_eq, c(""))
 print(paste('The verbs that were taken to be the same as "understand" are:', paste(understand_equivalence, collapse = ", "), sep = " "))
 
 #KNOW
-know_equivalence <- ilo_data_clean %>% filter(str_detect(Verb, "know")) %>% pull(Verb) %>% unique()
+know_equivalence <- setdiff(know_eq, c("use knowledge","gain basic practical knowledge"))
 print(paste('The verbs that were taken to be the same as "know" are:', paste(know_equivalence, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
 
 #[GAIN] FAMILIARITY
-familiarize_equivalence <- ilo_data_clean %>% filter(str_detect(Verb, "familia")) %>% pull(Verb) %>% unique()
-print(paste('The verbs that were taken to be the same as "[gain] familiarity" are:', paste(familiarize_equivalence, collapse = ", "), sep = " "))
+familiarise_equivalence <- setdiff(familiarise_eq, c(""))
+print(paste('The verbs that were taken to be the same as "[gain] familiarity" are:', paste(familiarise_equivalence, collapse = ", "), sep = " "))
 
+#ANALYSE
+analyse_equivalence <- setdiff(analyse_eq, c("to further (research, analyical and writing skills)", "define/analyse/answer", "reason analyticaly", "think analytically"))
+print(paste('The verbs that were taken to be the same as "analyse" are:', paste(analyse_equivalence, collapse = ", "), sep = " "))
+
+#[BE] INTRODUCED
+introduce_equivalence <- setdiff(introduce_eq, c(""))
+print(paste('The verbs that were taken to be the same as "[be] introduced" are:', paste(introduce_equivalence, collapse = ", "), sep = " "))
+
+#[GET] OVERVIEW
+overview_equivalence <- setdiff(overview_eq, c(""))
+print(paste('The verbs that were taken to be the same as "[get] overview" are:', paste(overview_equivalence, collapse = ", "), sep = " "))
+
+#[GET] ACQUAINTED
+acquainted_equivalence <- setdiff(acquainted_eq, c(""))
+print(paste('The verbs that were taken to be the same as "[get] acquainted" are:', paste(acquainted_equivalence, collapse = ", "), sep = " "))
 
 ```
-NOTES:"gain basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
+
 ```{r cleaning other verbs}
+#Clean functions
+remove_to <- function(string){
+  str_replace(string, "to ", "")
+}
+
+#Standardize functions
 standardize_knowing <- function(string){
-  str_replace(string, "to know|to have knowledge|basic knowledge", "know")
+  str_replace(string, collapse_or(know_equivalence), "know")
 }
 
 standardize_understand <- function(string){
-  str_replace(string, "to understand|to develop understanding|gain understanding|basic understanding", "understand")
+  str_replace(string, collapse_or(understand_equivalence), "understand")
 }
 
 standardize_familiarity <- function(string){
-  str_replace(string, "to familiarize|to develop understanding|gain understanding|basic understanding", "understand")
+  str_replace(string, collapse_or(familiarise_equivalence), "[gain] familiarity")
 }
 
-ilo_data_clean <- ilo_data
+standardize_analyse <- function(string){
+  str_replace(string, collapse_or(analyse_equivalence), "analyse")
+}
 
-ilo_data_clean <- fhhf
+standardize_introduce <- function(string){
+  str_replace(string, collapse_or(introduce_equivalence), "[be] introduced")
+}
 
-ilo_data_clean %>% transmute(Verb_used_1 = map_chr(Verb_used_1, standardize_knowing),
-                             Verb_used_1 = map_chr(Verb_used_1, standardize_understand)) %>%
-  distinct()
+standardize_overview <- function(string){
+  str_replace(string, collapse_or(overview_equivalence), "[get] overview")
+}
+
+standardize_acquainted <- function(string){
+  str_replace(string, collapse_or(acquainted_equivalence), "[get] acquainted")
+}
+```
+
+```{r apply standarization}
+ilo_data_clean %>% mutate(
+  Verb = map_chr(Verb, standardize_knowing),
+  Verb = map_chr(Verb, standardize_understand),
+  Verb = map_chr(Verb, standardize_familiarity),
+  Verb = map_chr(Verb, standardize_analyse),
+  Verb = map_chr(Verb, standardize_introduce),
+  Verb = map_chr(Verb, standardize_overview),
+  Verb = map_chr(Verb, standardize_acquainted),
+  Verb = map_chr(Verb, function(string) str_replace(string, "to ", "")),
+  Verb = map_chr(Verb, function(string) str_replace(string, "^na$", NA_character_))
+  ) %>%
+  distinct() %>% arrange(Verb) %>% View()
 
 ```
 
