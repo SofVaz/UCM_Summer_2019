@@ -5,6 +5,8 @@ date: "08/07/2019"
 output: 
   html_document:
     toc: true
+    toc_float:
+      collapsed: false
 ---
 
 
