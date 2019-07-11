@@ -273,25 +273,49 @@ knitr::kable(
 ```
 
 Time for some summary graphs and summary statistics:
+
 ###Summary Statistics
 ####Total verbs in ILOs:
-```{r}
-total_objectives <- ilo_data_clean %>% group_by(ILO) %>% mutate(Verbs_per_ILO = n()) %>%
-  
-# for verification join with:
-# %>% arrange(Course, ILO) %>% select(Course, Verbs_per_ILO, Verb, ILO, everything())
+```{r summary statistics}
+ilo_verb_stats_data <- ilo_data_clean %>%
+  mutate(not_na_verb = case_when(is.na(Verb) ~ 0, # makes NA verbs not count. 
+                                 T ~1)) %>%
+  group_by(Course, ILO) %>% 
+  mutate(Verbs_per_ILO = sum(not_na_verb)) %>%
   ungroup() %>%
-  select(Course, Level, Concentration, ILO, Verbs_per_ILO, Verb) %>% 
-  filter(is.na(Verb)) %>%
+  select(Course, Level, Concentration, ILO, Verbs_per_ILO) %>%
   distinct() %>%
   group_by(Course) %>%
   mutate(ilo_per_course = n(),
          verbs_per_course = sum(Verbs_per_ILO)) %>%
+  ungroup()
+
+total_verb_objectives <- ilo_verb_stats_data %>%
+  select(Course, verbs_per_course) %>%
+  distinct() %>%
+  mutate(total_verbs = sum(verbs_per_course)) %>% pull
+
+ilo_data_clean %>% pull(Verb) %>% unique()
+
+total_objectives <- ilo_data_clean %>% 
+  group_by(ILO) %>% 
+  mutate(Verbs_per_ILO = n()) %>%
   
+# for verification join with:
+# %>% arrange(Course, ILO) %>% select(Course, Verbs_per_ILO, Verb, ILO, everything())
+  
+  ungroup() %>%
+  select(Course, Level, Concentration, ILO, Verbs_per_ILO, Verb) %>% 
+  filter(!is.na(Verb)) %>% # remove NAs
+  distinct() %>%
+  group_by(Course) %>%
+  mutate(ilo_per_course = n(),
+         verbs_per_course = sum(Verbs_per_ILO)) %>%
   select(Course, verbs_per_course) %>%
   distinct() %>%
   ungroup() %>%
   mutate(total_verbs = sum(verbs_per_course)) 
+
 total_objectives %>%
   summary()
 
