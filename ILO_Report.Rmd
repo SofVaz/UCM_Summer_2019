@@ -1,7 +1,7 @@
 ---
 title: "ILO summary- Week 1 Report"
 author: "Sofia Vazquez Alferez (DARS, University College Maastricht"
-date: "08/07/2019"
+date: !r Sys.Date() #"08/07/2019"
 output: html_document
 ---
 
@@ -15,6 +15,7 @@ library(stringr)
 library(readxl)
 library(tidytext)
 library(udpipe) #language model
+library(stargazer) #table output
 ```
 
 ```{r import}
@@ -27,7 +28,7 @@ ilo_data <- ilo_data %>% mutate(Level = str_sub(Course, start = 4, end = 4), Con
 
 ```{r number of courses}
 no_courses <- ilo_data %>% select(Course) %>% unique() %>% count() %>% pull(n)
-no_ilo_plus_1 <- ilo_data %>% select(Course, ILO) %>% distinct() %>% nrow()
+no_ilo <- ilo_data %>% transmute(not_empty = !is.na(ILO)) %>% summarize(total_ilos = sum(not_empty)) %>% pull(total_ilos)
 ```
 #Abstract
 This document presents a brief overview of the current state of the *Intended Learning Objectives* (hereafter *ILO*). Included is information on:  
@@ -38,13 +39,11 @@ This document presents a brief overview of the current state of the *Intended Le
 
 #Introduction *A brief overview of our data*
 For this analysis I used the *ILOs* for the year *2018/2019* provided by Edith. The *ILOs* of the projects (PRO) were missing from this file, and have therefore not been included in the subsequent analysis. I did have the *ILOs* for the Undergraduate Research Projects (UGR), so these are inlcuded.  
-The data contained a total of **`r no_courses`** **courses**, which amounted to **`r no_ilo_plus_1 -1`** **ILOs**.
-```{r clean workspace 1}
-rm(no_courses,no_ilo_plus_1)
-```
+The data contained a total of **`r no_courses`** **courses**, which amounted to **`r no_ilo`** **ILOs**.
+All quotes from *ILOs* are referenced with base to the `ILOs_2018_2019.docx` document.
 
 ##Distribution of ILO per course
-In general, the courses had an average of `r round(no_ilo_plus_1/no_courses,1)` *ILOs* per course. Which were distributed as follows:
+In general, the courses had an average of `r round(no_ilo/no_courses,1)` *ILOs* per course. Which were distributed as follows:
 ```{r distribution of ILOs per course, warning = FALSE}
 ilo_data %>% 
   mutate(not_empty = !is.na(ILO)) %>% 
@@ -54,22 +53,30 @@ ilo_data %>%
   ggplot(aes(x = Number_ilos, y = n)) +
   geom_histogram(stat = "identity", fill = "navy") +
   labs(title= "Distribution of ILOs per Course", x = "Number of ILOs", y = "Number of Courses (with said number of ILOs)") +
-  coord_flip() +
   theme_minimal()
 ```
-A breakdown by Level and Concentration gives:
-[to be added]
 
+A breakdown by Level and Concentration gives:  
+[to be added]
+```{r clean workspace 1}
+rm(no_courses,no_ilo)
+```
 ##Orientation of Language
 It was possible to distinguish two categories in the way *ILOs* were formulated. *ILOs* were either as student (S) oriented or course (C) oriented.
 **Student oriented** *ILOs* described what the student was supposed to achieve or have learned during the course, whilst **course oriented** *ILOs* described the aims of the course. For example:  
-* Student Oriented *ILO*: ""().  
-* Course Oriented *ILO*: ""().
+1. Student Oriented *ILO*:  
+> “To offer a broad overview of scientific models” (COR1005, p. 1)  
+  “To acquaint students with the problems…” (HUM2030, p.3)  
+  “To enhance their research skills” (SKI1009, p.11)  
+  
+2. Course Oriented *ILO*:  
+> “Apply basic bookkeeping techniques” (SSC2022, p.15)  
+  “To reflect on the relevance and utility of social theory in general”(SSC2028, p.15)
 
-Some courses had *ILOs* formulated in both a student and a course oriented way. 
+A few courses had some *ILOs* formulated in a student oriented fashion and others *ILOs* in a course oriented fashion. Thus, overview bellow is done at a granularity of *ILO* not courses.
 
 In general, this is what we have in the curriculum in raw numbers:
-```{r course orientation}
+```{r course orientation, warning = FALSE}
 ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
   ggplot(aes(x = `Course_Intention/Student_profile`, y = n, label = n)) +
   geom_histogram(stat = "identity", fill = "navy")+
@@ -78,8 +85,9 @@ ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Int
   theme_classic()
   
 ```
+
 In percentages, we have the following::
-```{r orientation percentage}
+```{r orientation percentage, warning = FALSE}
 ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
   ungroup() %>%
   mutate(percentage = n*100/sum(n)) %>%
@@ -90,167 +98,35 @@ ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Int
   theme_classic()
   
 ```
+
 The `NA` category represents courses that I did not classify in any of those categories. They were the following *ILOs*:
 ```{r Orientation unclear, results = "asis"}
-ilo_data %>% filter(is.na(`Course_Intention/Student_profile`)) %>% select(Course, ILO)
-```
-
-##Basic Text analysis
-I count the appearance of words accross all courses, and add that number to the dataframe. 
-```{r count words}
-ilo_unnested <-  ilo_data %>% 
-  select(Course, ILO, Level, Concentration) %>% 
-  unnest_tokens(word, ILO)
-
-# basic_word_counts <- ilo_unnested %>% 
-#   count(word)
-
-# ilo_word_counts <- ilo_unnested %>% left_join(basic_word_counts, by = "word")
-# 
-# ilo_word_counts
-```
-
-Here is the very basic count of words that appear:
-```{r basic word count, eval = F}
-#basic_word_counts
-```
-###Classes of words
-I will manually remove some of the common words such as prepositions and conjunctions:
-```{r my_stopwords}
-prepositions <- c(
-      "with", "at", "from", "into", "during", "including", "until", "against", "among", "throughout",
-      "despite", "towards", "upon", "concerning", "to", "in", "for", "of", "on", "by", "about", "like", "through",
-      "over","before", "between", "after","since","without", "under", "within","along","following", "across",
-      "behind","beyond", "plus", "except", "but", "up","out", "around", "down", "off", "above", "near"
-)
-
-conjunctions <- c("and", "or", "but","nor", "for","yet", "after", "although", "as", "because", "before","even", "once", "since", "though", "till", "unless", "until", "what", "when", "whenever", "wherever", "whether","while")
-
-determiners <- c("this", "that", "these", "those")
-
-articles <- c("the", "a", "an")
-
-pronouns <- c("it", "one", "you", "we", "they",
-              "his", "hers", "ours", "their")
-
-my_stopwords <- c(word = c(prepositions, conjunctions, articles, determiners, pronouns))
-
-#Clean workspace
-rm(prepositions, conjunctions, articles, determiners, pronouns)
-```
-removing common words:
-```{r remove stopwords, eval = F}
-basic_word_counts %>%
-  filter(!str_detect(word,"[0-9]+")) %>% #remove numbers
-  filter(! word %in% my_stopwords)
-```
-###Universal part of speech
-Alternatively, we should check out this package, created by the Institute of Formal and Applied Linguistics of Charles University, Czech Republic at the Faculty of Mathematics and Physics. http://ufal.mff.cuni.cz/udpipe 
-
-Lables are as follows: 
-ADJ: adjective
-ADP: adposition
-ADV: adverb
-AUX: auxiliary
-CCONJ: coordinating conjunction
-DET: determiner
-INTJ: interjection
-NOUN: noun
-NUM: numeral
-PART: particle
-PRON: pronoun
-PROPN: proper noun
-PUNCT: punctuation
-SCONJ: subordinating conjunction
-SYM: symbol
-VERB: verb
-X: other
-```{r language model}
-# library(udpipe)
-
-english_lang_model <- udpipe_download_model(language = "english")
-udmodel_english <- udpipe_load_model(file = english_lang_model$file_model)
-s <- udpipe_annotate(udmodel_english, ilo_unnested$word)
-x <- data.frame(s) %>% select(token, upos, xpos) %>% distinct()
-
-#rm(english_lang_model, udmodel_english, s)
-```
-Annotating the data based on the language model:
-```{r annotate data}
-annotated_ilo <- ilo_unnested %>% left_join(x, by = c("word" = "token"))
-```
-Filtering for verbs:
-```{r verbs in all courses}
-verbs_in_ilos <- annotated_ilo %>%
-  filter(upos == "VERB") 
-```
-Universal Verb counts
-```{r verb counts basic text analysis}
-verbs_unrepeated <- verbs_in_ilos %>%
-  group_by(word) %>%
-  mutate(n = n()) %>%
-  select(word, n) %>%
-  distinct()
-
-verbs_unrepeated %>%
-  top_n(n = 20, wt = n) %>%
-  ungroup() %>%
-  .[1:20,] %>%
-  ggplot(aes(x = reorder(word,-n), y = n))+
-  geom_histogram(stat = "identity", fill = "navy")+
-  labs(title = "Most Common Verbs", x = "Verb", y = "Number of appearances")+
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-```
-
-####Breakdown by Level
-```{r level break down}
-verbs_unrepeated <- verbs_in_ilos %>%
-  group_by(Level, word) %>%
-  mutate(n = n()) %>%
-  select(Level, word, n) %>%
-  distinct()
-
-d_level_plots <- verbs_unrepeated %>% 
-  group_by(Level) %>%
-  top_n(n = 20, wt = n) %>%
-  ungroup()
-
-#Level 1000
-d_level_plots %>%
-  filter(Level == 1) %>%
-  ggplot(aes(x = reorder(word,-n), y = n)) +
-  geom_histogram(stat = "identity", fill = "navy") +
-  labs(title = "Most Common Verbs for 1000 Level", x = "Verb", y = "Number of appearances")+
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+knitr::kable(
+  x = ilo_data %>% 
+    filter(is.na(`Course_Intention/Student_profile`)) %>% 
+    select(Course, ILO), 
   
-#Level2000
-d_level_plots %>%
-  filter(Level == 2) %>%
-  ggplot(aes(x = reorder(word,-n), y = n)) +
-  geom_histogram(stat = "identity", fill = "navy") +
-  labs(title = "Most Common Verbs for 2000 Level", x = "Verb", y = "Number of appearances")+
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-#Level3000
-d_level_plots %>%
-  filter(Level == 3) %>%
-  ggplot(aes(x = reorder(word,-n), y = n)) +
-  geom_histogram(stat = "identity", fill = "navy") +
-  labs(title = "Most Common Verbs for 3000 Level", x = "Verb", y = "Number of appearances")+
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
+  caption = "Table of ILOs wihout orientation category"
+  )
 ```
 
-#Manual analysis display
-For each of the ILOs the verb describing what the student is intended to learn was extracted manually. This created a distiction between the course verb and the student verb. For instance, for the ILO "to provide students with [...] perspectives to examine..." (COR1004, p.1) the extracted verb is "[to] examine".
- 
-Let's have a look at all the verbs I extracted.
+So, what types of *ILOs* do we have?
 
-First, I clean the data to have all verbs in one column. I replace `NA` with a character (`"NaN"`) to be able to remove `NA`s created by `gather`, after those have been filtered out, I return `"NaN"` to `NA`.
+#Methodology
+##Phase 1- Verb extraction
+In order to get a better grasp of the characterization of our *ILOs*, I manually went through all *ILOs* and extracted the verb(s) describing what the student was supposed to do in each *ILO*. This created a distiction between the course verb and the student verb, as well as between the `action verb` and the `intended verb`.  For instance:  
+**1. Course verb/Student verb:**  
+For the ILO "to provide students with [...] perspectives to examine..." (COR1004, p.1) the extracted verb is "[to] examine" not "[to] provide". 
+**2. Action verb/Intended verb:** 
+For the ILO "to have the ability to interpret dynamical phenomena..."(SCI3006, p. 9) the verb "[to] interpret" was extracted not "[to] have (the ability)".  
+
+In cases where the verb used was missleading, descriptive words were included. For instance, in the ILO "Gain basic knowledge in using economic/statistical data and present them in an informative way" (SSC2038, p. 15), the words "Gain basic knowledge" were recorded, as opposed to simply "[to] gain". For this specific ILO, the verbs "use" and "present" were also extracted, as each ILO could have more than one verb associated to them. 
+
+During this phase I tried to keep as close as possible to the original formulation, although as I advanced through the *ILOs* I started to adapt some of the formulations to create some consistency with previously encountered data. Thus, particularily at the end formulations such as "to perform an analysis" were simply extracted as "analyse". Moreover, because of this fidelity principle, some of the verbs for ilos were not verbs at all but conveyed the expected outcome. For instance, "overview" was extracted from the following ILO: "To give an overview over the different media platforms and media practices" (HUM2022, p.3), since the student was suppoded to 'get an overview'.
+
+This phase was performed in Excel and all extracted verbs were recorded in the same row as the original formulation, so it is possible to trace back the work and contest my check my interpretations.
+
+In the following list, it is possible to see all the verbs that were extracted:
 ```{r clean ilo data}
 ilo_data_clean <- ilo_data %>% 
   mutate(Verb_used_1 = case_when(is.na(Verb_used_1)~"NaN",
@@ -263,52 +139,48 @@ ilo_data_clean <- ilo_data %>%
 
 ```{r dirty verbs}
 dirty_verbs <- ilo_data_clean %>% pull(Verb) %>% unique()
-dirty_verbs
+print(dirty_verbs)
 ```
-as you can see some verbs are really similar, for example, we have: "to understand", "understand" and "basic understanding". Let's group all of these together.
 
-We will need an or function to help with regular expressions:
+##Phase 2- Standardisation  
+As you can see, some verbs are really similar. For example, we have: "to understand", "understand" and "basic understanding". Therefore, in `Phase 2` I standardised some of the vocabulary. All of the previous words were replaced by the same words: "understand". Here is an overview of the replacements:
+
 ```{r collapse or}
 collapse_or <- function(string_vector){
   paste(string_vector, collapse ="$|^")
 }
 ```
 
-First find similarities
 ```{r search for equivalence}
 #UNDERSTAND
 understand_eq <- ilo_data_clean %>% filter(str_detect(Verb, "understa")) %>% pull(Verb) %>% unique()
-print(paste('"understand":', paste(understand_eq, collapse = ", "), sep = " "))
+# print(paste('"understand":', paste(understand_eq, collapse = ", "), sep = " "))
 
 #KNOW
 know_eq <- ilo_data_clean %>% filter(str_detect(Verb, "know")) %>% pull(Verb) %>% unique()
-print(paste('"know":', paste(know_eq, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
+# print(paste('"know":', paste(know_eq, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
 
 #[GAIN] FAMILIARITY
 familiarise_eq <- ilo_data_clean %>% filter(str_detect(Verb, "familia")) %>% pull(Verb) %>% unique()
-print(paste('"[gain] familiarity":', paste(familiarise_eq, collapse = ", "), sep = " "))
+# print(paste('"[gain] familiarity":', paste(familiarise_eq, collapse = ", "), sep = " "))
 
 #ANALYSE
 analyse_eq <- ilo_data_clean %>% filter(str_detect(Verb, "analy")) %>% pull(Verb) %>% unique()
-print(paste('"analyse":', paste(analyse_eq, collapse = ", "), sep = " "))
+# print(paste('"analyse":', paste(analyse_eq, collapse = ", "), sep = " "))
 
 #[BE] INTRODUCED
 introduce_eq <- ilo_data_clean %>% filter(str_detect(Verb, "introd")) %>% pull(Verb) %>% unique()
-print(paste('"[be] introduced":', paste(introduce_eq, collapse = ", "), sep = " "))
+# print(paste('"[be] introduced":', paste(introduce_eq, collapse = ", "), sep = " "))
 
 #[GET] OVERVIEW
 overview_eq <- ilo_data_clean %>% filter(str_detect(Verb, "overv")) %>% pull(Verb) %>% unique()
-print(paste('"[get] overview":', paste(overview_eq, collapse = ", "), sep = " "))
+# print(paste('"[get] overview":', paste(overview_eq, collapse = ", "), sep = " "))
 
 #[GET] ACQUAINTED
 acquainted_eq <- ilo_data_clean %>% filter(str_detect(Verb, "acquain")) %>% pull(Verb) %>% unique()
-print(paste('"[get] acquainted":', paste(acquainted_eq, collapse = ", "), sep = " "))
+# print(paste('"[get] acquainted":', paste(acquainted_eq, collapse = ", "), sep = " "))
 ```
-NOTES:
- *"gain basic practial knowledge" and "use knowledge" might not be correct under "know" rather in "apply". 
- *"think analytically" and "reason analyticaly" don't have a clear interpretation to me. 
 
-We notice that some of the words recognized by are not quite equivalent. Therefore, I create equivalent classes for filtering:
 ```{r equivanlent classes}
 #UNDERSTAND
 understand_equivalence <- setdiff(understand_eq, c(""))
@@ -339,7 +211,7 @@ acquainted_equivalence <- setdiff(acquainted_eq, c(""))
 print(paste('The verbs that were taken to be the same as "[get] acquainted" are:', paste(acquainted_equivalence, collapse = ", "), sep = " "))
 
 ```
-Next, I create standardizing functions that use those equivalent classes to replace all verbs in the same class for a single verb.
+
 ```{r cleaning other verbs}
 #Clean functions
 remove_to <- function(string){
@@ -375,7 +247,7 @@ standardize_acquainted <- function(string){
   str_replace(string, collapse_or(acquainted_equivalence), "[get] acquainted")
 }
 ```
-Finally, I standardize the data by applying our functions so all verbs in equivalent classes are mapped to the same verb. Now, our data is clean.
+
 ```{r apply standarization}
 ilo_data_clean <- ilo_data_clean %>% 
   mutate(
@@ -390,10 +262,14 @@ ilo_data_clean <- ilo_data_clean %>%
     #Verb = map_chr(Verb, function(string) str_replace(string, "^na$", NA_character_)) #this should not be necessary anymore.
   ) 
 ```
-Lets see what I ended up with:
-```{r view clean ilos}
-ilo_data_clean %>% View()
 
+The result is a table like this:
+```{r view clean ilos, results = "asis"}
+knitr::kable(
+  x = ilo_data_clean %>% select(Course, ILO, Verb) %>% arrange(Course, ILO)%>% head(13), 
+  
+  caption = "Table of ILOs with extravted standardized verb"
+  )
 ```
 
 Time for some summary graphs and summary statistics:
@@ -405,24 +281,27 @@ total_objectives <- ilo_data_clean %>% group_by(ILO) %>% mutate(Verbs_per_ILO = 
 # for verification join with:
 # %>% arrange(Course, ILO) %>% select(Course, Verbs_per_ILO, Verb, ILO, everything())
   ungroup() %>%
-  select(Course, Level, Concentration, ILO, Verbs_per_ILO) %>% 
+  select(Course, Level, Concentration, ILO, Verbs_per_ILO, Verb) %>% 
+  filter(is.na(Verb)) %>%
   distinct() %>%
   group_by(Course) %>%
   mutate(ilo_per_course = n(),
          verbs_per_course = sum(Verbs_per_ILO)) %>%
+  
   select(Course, verbs_per_course) %>%
   distinct() %>%
   ungroup() %>%
-  summarize(total = sum(verbs_per_course)) %>%
-  pull(total)
+  mutate(total_verbs = sum(verbs_per_course)) 
+total_objectives %>%
+  summary()
 
-total_objectives
+total_objectives %>% pull(total_verbs) %>% unique()
 ```
 we have 856 verbs (objectives).
 ###Graphs
 ####Universal Verbs
 Universal use of verbs:
-```{r verb counts maunal text analysis}
+```{r verb counts maunal text analysis, warning = FALSE}
 verbs_unrepeated <- ilo_data_clean %>%
   group_by(Verb)  %>%
   mutate(n = n()) %>%
@@ -443,7 +322,7 @@ verbs_unrepeated        %>%
 ```
 
 ####Breakdown by Level
-```{r level break down manual text analysis}
+```{r level break down manual text analysis, warning = FALSE}
 verbs_unrepeated <- ilo_data_clean %>%
   group_by(Level, Verb)            %>%
   mutate(n = n())                  %>%
