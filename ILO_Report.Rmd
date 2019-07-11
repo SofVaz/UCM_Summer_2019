@@ -1,5 +1,10 @@
 ---
 title: "The state of ILOs - Report"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 author: "Sofia Vazquez Alferez (DARS, University College Maastricht"
 date: "08/07/2019"
 output:
