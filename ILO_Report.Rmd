@@ -1,9 +1,12 @@
 ---
-title: "ILO summary- Week 1 Report"
+title: "The state of ILOs - Report"
 author: "Sofia Vazquez Alferez (DARS, University College Maastricht"
 date: "08/07/2019"
-output: html_document
+output: 
+  html_document:
+    toc: true
 ---
+
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE)
@@ -18,11 +21,11 @@ library(udpipe) #language model
 library(stargazer) #table output
 ```
 
-```{r import}
+```{r import, warning = F}
 ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA"))
 ```
 
-```{r add course level and concentration label}
+```{r add course level and concentration label, warning = F}
 ilo_data <- ilo_data %>% mutate(Level = str_sub(Course, start = 4, end = 4), Concentration = str_sub(Course, start = 1, end = 3))
 ```
 
@@ -31,19 +34,28 @@ no_courses <- ilo_data %>% select(Course) %>% unique() %>% count() %>% pull(n)
 no_ilo <- ilo_data %>% transmute(not_empty = !is.na(ILO)) %>% summarize(total_ilos = sum(not_empty)) %>% pull(total_ilos)
 ```
 #Abstract
-This document presents a brief overview of the current state of the *Intended Learning Objectives* (hereafter *ILO*). Included is information on:  
-1. The orientation of language used in ILOs  
-2. The most common objectives broken down by Level and Concentration  
-3. A description of how the objectives map to Bloom's Taxonomy of learning  
-4. Recommendations  
+This document presents a brief overview of the current state of the *Intended Learning Objectives* (hereafter *ILO*). Including information on:
 
-#Introduction *A brief overview of our data*
+* The number of ILOs in our courses.
+
+* The orientation of language used in ILOs
+
+* The most common capacities the ILOs promote broken down by Level and Concentration
+
+* [NOT DONE YET] A description of how the current objectives map to Bloom's Taxonomy of learning.
+
+* [NOT DONE YET] Recommendations on how to write ILOs
+
+* [NOT DONE YET] Suggested rephrasing of current ILO's
+
+#A brief overview of our data
 For this analysis I used the *ILOs* for the year *2018/2019* provided by Edith. The *ILOs* of the projects (PRO) were missing from this file, and have therefore not been included in the subsequent analysis. I did have the *ILOs* for the Undergraduate Research Projects (UGR), so these are inlcuded.  
 The data contained a total of **`r no_courses`** **courses**, which amounted to **`r no_ilo`** **ILOs**.
 All quotes from *ILOs* are referenced with base to the `ILOs_2018_2019.docx` document.
 
-##Distribution of ILO per course
+##How many of ILOs do our courses have? (distribution per course)
 In general, the courses had an average of `r round(no_ilo/no_courses,1)` *ILOs* per course. Which were distributed as follows:
+
 ```{r distribution of ILOs per course, warning = FALSE}
 ilo_data %>% 
   mutate(not_empty = !is.na(ILO)) %>% 
@@ -61,21 +73,26 @@ A breakdown by Level and Concentration gives:
 ```{r clean workspace 1}
 rm(no_courses,no_ilo)
 ```
-##Orientation of Language
+
+##With what orientation are they written? (Student vs. Course)
 It was possible to distinguish two categories in the way *ILOs* were formulated. *ILOs* were either as student (S) oriented or course (C) oriented.
 **Student oriented** *ILOs* described what the student was supposed to achieve or have learned during the course, whilst **course oriented** *ILOs* described the aims of the course. For example:  
+
 1. Student Oriented *ILO*:  
+
 > “To offer a broad overview of scientific models” (COR1005, p. 1)  
   “To acquaint students with the problems…” (HUM2030, p.3)  
   “To enhance their research skills” (SKI1009, p.11)  
   
 2. Course Oriented *ILO*:  
+
 > “Apply basic bookkeeping techniques” (SSC2022, p.15)  
   “To reflect on the relevance and utility of social theory in general”(SSC2028, p.15)
 
 A few courses had some *ILOs* formulated in a student oriented fashion and others *ILOs* in a course oriented fashion. Thus, overview bellow is done at a granularity of *ILO* not courses.
 
 In general, this is what we have in the curriculum in raw numbers:
+
 ```{r course orientation, warning = FALSE}
 ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
   ggplot(aes(x = `Course_Intention/Student_profile`, y = n, label = n)) +
@@ -86,7 +103,8 @@ ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Int
   
 ```
 
-In percentages, we have the following::
+In percentages, we have the following:
+
 ```{r orientation percentage, warning = FALSE}
 ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
   ungroup() %>%
@@ -98,8 +116,9 @@ ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Int
   theme_classic()
   
 ```
-
+###Inspecting NA orientation category
 The `NA` category represents courses that I did not classify in any of those categories. They were the following *ILOs*:
+
 ```{r Orientation unclear, results = "asis"}
 knitr::kable(
   x = ilo_data %>% 
@@ -110,13 +129,16 @@ knitr::kable(
   )
 ```
 
-So, what types of *ILOs* do we have?
+#Analysing our ILOs
 
-#Methodology
-##Phase 1- Verb extraction
+##Methodology
+
+###Phase 1- Verb extraction
 In order to get a better grasp of the characterization of our *ILOs*, I manually went through all *ILOs* and extracted the verb(s) describing what the student was supposed to do in each *ILO*. This created a distiction between the course verb and the student verb, as well as between the `action verb` and the `intended verb`.  For instance:  
+
 **1. Course verb/Student verb:**  
 For the ILO "to provide students with [...] perspectives to examine..." (COR1004, p.1) the extracted verb is "[to] examine" not "[to] provide". 
+
 **2. Action verb/Intended verb:** 
 For the ILO "to have the ability to interpret dynamical phenomena..."(SCI3006, p. 9) the verb "[to] interpret" was extracted not "[to] have (the ability)".  
 
@@ -127,6 +149,7 @@ During this phase I tried to keep as close as possible to the original formulati
 This phase was performed in Excel and all extracted verbs were recorded in the same row as the original formulation, so it is possible to trace back the work and contest my check my interpretations.
 
 In the following list, it is possible to see all the verbs that were extracted:
+
 ```{r clean ilo data}
 ilo_data_clean <- ilo_data %>% 
   mutate(Verb_used_1 = case_when(is.na(Verb_used_1)~"NaN",
