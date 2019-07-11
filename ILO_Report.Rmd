@@ -3,10 +3,8 @@ title: "The state of ILOs - Report"
 author: "Sofia Vazquez Alferez (DARS, University College Maastricht"
 date: "08/07/2019"
 output: 
-  html_document:
+  github_document:
     toc: true
-    toc_float:
-      collapsed: false
 ---
 
 
