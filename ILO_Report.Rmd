@@ -494,12 +494,29 @@ for (conc in concentrations){
 
 #Methods in ILO's
 ```{r}
-no_ilo_methods <- ilo_data_clean %>% filter(`Methodology LO` == "M") %>% nrow()
+no_ilo_methods <- ilo_data_clean %>% filter(`Methodology LO` == "M") %>% select(Course,ILO) %>% distinct %>% nrow()
 ```
 
 A separate question to consider is: how many of our ILOs explicitly refer to methodology?
-During the verb extraction, a comment was also made refering to whether or not the ILO explicitly refered to methodology. Out of the `r no_ilo` ILOs existing in the curricula, there were `r no_ilo_methods` about methodoloy (this is `r 100*no_ilo_methods/no_ilo`%) that refer.Here is a summary of that:
-```{r}
-ilo_data_clean %>% filter(`Methodology LO` == "M")
+During the verb extraction, a comment was also made refering to whether or not the ILO explicitly refered to methodology. Out of the `r no_ilo` ILOs existing in the curricula, there were `r no_ilo_methods` about methodoloy (this is `r 100*no_ilo_methods/no_ilo`%).
+
+Here are the ILO's which I marked as refering to methodology, the verbs used have been added for completeness:
+
+```{r methodology ilos, results = "asis"}
+paste_collapse <- function(vector){
+  paste(vector, collapse = ", ")
+}
+
+methodology_ilos <- ilo_data_clean %>% 
+  filter(`Methodology LO` == "M") %>% 
+  select(Course, ILO, Verb) %>% 
+  group_by(Course, ILO) %>%
+  mutate(Verbs_used = paste_collapse(Verb)) %>% select(-Verb) %>% distinct() %>% arrange(Course)
+
+knitr::kable(
+  x = methodology_ilos, 
+  
+  caption = "ILOs concenrning to methodology"
+  )
 ```
 
