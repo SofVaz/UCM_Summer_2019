@@ -77,9 +77,6 @@ ilo_data %>%
 
 A breakdown by Level and Concentration gives:  
 [to be added]
-```{r clean workspace 1}
-rm(no_courses,no_ilo)
-```
 
 ##With what orientation are they written? (Student vs. Course)
 It was possible to distinguish two categories in the way *ILOs* were formulated. *ILOs* were either as student (S) oriented or course (C) oriented.
@@ -494,3 +491,15 @@ for (conc in concentrations){
   print(plot)
 }
 ```
+
+#Methods in ILO's
+```{r}
+no_ilo_methods <- ilo_data_clean %>% filter(`Methodology LO` == "M") %>% nrow()
+```
+
+A separate question to consider is: how many of our ILOs explicitly refer to methodology?
+During the verb extraction, a comment was also made refering to whether or not the ILO explicitly refered to methodology. Out of the `r no_ilo` ILOs existing in the curricula, there were `r no_ilo_methods` about methodoloy (this is `r 100*no_ilo_methods/no_ilo`%) that refer.Here is a summary of that:
+```{r}
+ilo_data_clean %>% filter(`Methodology LO` == "M")
+```
+
