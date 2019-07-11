@@ -1,7 +1,7 @@
 ---
 title: "ILO summary- Week 1 Report"
 author: "Sofia Vazquez Alferez (DARS, University College Maastricht"
-date: !r Sys.Date() #"08/07/2019"
+date: "08/07/2019"
 output: html_document
 ---
 
@@ -272,10 +272,11 @@ knitr::kable(
   )
 ```
 
-Time for some summary graphs and summary statistics:
+#Results
+##A brief glance:
+So what do we have after the previous methodology has been applied? 
 
-###Summary Statistics
-####Total verbs in ILOs:
+####Total capacities promoted in ILOs:
 ```{r summary statistics}
 ilo_verb_stats_data <- ilo_data_clean %>%
   mutate(not_na_verb = 
@@ -295,22 +296,118 @@ total_verb_objectives <- ilo_verb_stats_data %>%
   select(Course, verbs_per_course,ilo_per_course)  %>%
   distinct() %>%
   mutate(total_verbs = sum(verbs_per_course)) %>% 
-  pull()
-
-
-ilo_data_clean %>% pull(Verb) %>% unique()
+  pull() %>%
+  unique
 ```
-we have 856 verbs (objectives).
-###Graphs
-####Universal Verbs
-Universal use of verbs:
+We have `r total_verb_objectives` individual capacity learning objectives (hereafter capacities). These are the abilities we intend to promote in our students according to our learning objectives and correspond to individual "verbs" (e.g. "understand", "analyse"). The breakdown by level is as follows:
+
+**Level 1000:**
+```{r verbs at 1000}
+ilo_verb_stats_data %>%
+  filter(Level == 1) %>%
+  select(Course, verbs_per_course,ilo_per_course)  %>%
+  distinct() %>%
+  mutate(total_verbs = sum(verbs_per_course)) %>% 
+  pull() %>%
+  unique() %>%
+  print
+```
+**Level 2000:**
+```{r verbs at 2000}
+ilo_verb_stats_data %>%
+  filter(Level == 2) %>%
+  select(Course, verbs_per_course,ilo_per_course)  %>%
+  distinct() %>%
+  mutate(total_verbs = sum(verbs_per_course)) %>% 
+  pull() %>%
+  unique() %>%
+  print
+```
+**Level 3000:**
+```{r verbs at 3000}
+ilo_verb_stats_data %>%
+  filter(Level == 3) %>%
+  select(Course, verbs_per_course,ilo_per_course)  %>%
+  distinct() %>%
+  mutate(total_verbs = sum(verbs_per_course)) %>% 
+  pull() %>%
+  unique() %>%
+  print
+```
+
+#####Graphically:
+```{r distribution of verbs per course, warning = FALSE}
+ilo_verb_stats_data %>%
+  select(Course, Level, Concentration, verbs_per_course, ilo_per_course) %>%
+  distinct() %>%
+  #group_by(verbs_per_course) %>%
+  count(verbs_per_course) %>%
+  ggplot(aes(x = verbs_per_course, y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title= "Number of Capacities promoted by Courses") +
+  scale_x_continuous(name = "Number of Capacities",  breaks = seq(0,20,1))+
+  scale_y_continuous("Number of Courses (promoting said number of Capacities)", breaks = seq(0,30,1))+
+  theme_minimal()
+```
+
+#####By  Level:
+```{r graphs verbs level break down, warning = FALSE}
+
+#Level 1000
+ilo_verb_stats_data %>%
+  filter(Level == 1) %>%
+  select(Course, Level, Concentration, verbs_per_course, ilo_per_course) %>%
+  distinct() %>%
+  #group_by(verbs_per_course) %>%
+  count(verbs_per_course) %>%
+  ggplot(aes(x = verbs_per_course, y = n)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  labs(title= "Number of Capacities promoted by 1000 Level Courses") +
+  scale_x_continuous(name = "Number of Capacities",  breaks = seq(0,20,1))+
+  scale_y_continuous("Number of Courses (promoting said number of Capacities)", breaks = seq(0,20,1))+
+  theme_minimal()
+  
+#Level2000
+ilo_verb_stats_data %>%
+  filter(Level == 2) %>%
+  select(Course, Level, Concentration, verbs_per_course, ilo_per_course) %>%
+  distinct() %>%
+  #group_by(verbs_per_course) %>%
+  count(verbs_per_course) %>%
+  ggplot(aes(x = verbs_per_course, y = n)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  labs(title= "Number of Capacities promoted by 2000 Level Courses") +
+  scale_x_continuous(name = "Number of Capacities",  breaks = seq(0,20,1))+
+  scale_y_continuous("Number of Courses (promoting said number of Capacities)", breaks = seq(0,20,1))+
+  theme_minimal()
+
+#Level3000
+ilo_verb_stats_data %>%
+  filter(Level == 3) %>%
+  select(Course, Level, Concentration, verbs_per_course, ilo_per_course) %>%
+  distinct() %>%
+  #group_by(verbs_per_course) %>%
+  count(verbs_per_course) %>%
+  ggplot(aes(x = verbs_per_course, y = n)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  labs(title= "Number of Capacities promoted by 3000 Level Courses") +
+  scale_x_continuous(name = "Number of Capacities",  breaks = seq(0,20,1))+
+  scale_y_continuous("Number of Courses (promoting said number of Capacities)", breaks = seq(0,20,1))+
+  theme_minimal()
+
+```
+
+##Capacities
+So what are these capacities?
+
+###Across all courses
 ```{r verb counts maunal text analysis, warning = FALSE}
 verbs_unrepeated <- ilo_data_clean %>%
   group_by(Verb)  %>%
   mutate(n = n()) %>%
   select(Verb, n) %>%
-  distinct()      %>%
-  filter(!is.na(Verb)) #REMOVE NA
+  distinct()      # %>%
+  # filter(!is.na(Verb)) #REMOVE NA
 
 verbs_unrepeated        %>%
   top_n(n = 20, wt = n) %>%
@@ -319,13 +416,14 @@ verbs_unrepeated        %>%
   .[1:20,]              %>%
   ggplot(aes(x = reorder(Verb,-n), y = n)) +
   geom_histogram(stat = "identity", fill = "navy") +
-  labs(title = "Most Common Verbs across all Courses", x = "Verb", y = "Number of appearances") +
+  labs(title = "Most Common Capacities across all Courses", x = "Capacity", y = "Number of appearances") +
   theme_classic() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-####Breakdown by Level
+###Breakdown by Level
 ```{r level break down manual text analysis, warning = FALSE}
+levels <- 1:3
 verbs_unrepeated <- ilo_data_clean %>%
   group_by(Level, Verb)            %>%
   mutate(n = n())                  %>%
@@ -337,31 +435,68 @@ d_level_plots <- verbs_unrepeated %>%
   top_n(n = 20, wt = n)           %>%
   ungroup()
 
-#Level 1000
-d_level_plots %>%
-  filter(Level == 1) %>%
-  ggplot(aes(x = reorder(Verb,-n), y = n)) +
-  geom_histogram(stat = "identity", fill = "navy") +
-  labs(title = "Most Common Verbs for 1000 Level", x = "Verb", y = "Number of appearances")+
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  
-#Level2000
-d_level_plots %>%
-  filter(Level == 2) %>%
-  ggplot(aes(x = reorder(Verb,-n), y = n)) +
-  geom_histogram(stat = "identity", fill = "navy") +
-  labs(title = "Most Common Verbs for 2000 Level", x = "Verb", y = "Number of appearances")+
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+for (lev in levels){
+  plot <- d_level_plots %>%
+    filter(Level == lev) %>%
+    ggplot(aes(x = reorder(Verb,-n), y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Most Common Capacities for ", lev, "000 Level",sep = ""), x = "Capacity", y = "Number of appearances")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+# #Level 1000
+# d_level_plots %>%
+#   filter(Level == 1) %>%
+#   ggplot(aes(x = reorder(Verb,-n), y = n)) +
+#   geom_histogram(stat = "identity", fill = "navy") +
+#   labs(title = "Most Common Verbs for 1000 Level", x = "Verb", y = "Number of appearances")+
+#   theme_classic() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+#   
+# #Level2000
+# d_level_plots %>%
+#   filter(Level == 2) %>%
+#   ggplot(aes(x = reorder(Verb,-n), y = n)) +
+#   geom_histogram(stat = "identity", fill = "navy") +
+#   labs(title = "Most Common Verbs for 2000 Level", x = "Verb", y = "Number of appearances")+
+#   theme_classic() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# 
+# #Level3000
+# d_level_plots %>%
+#   filter(Level == 3) %>%
+#   ggplot(aes(x = reorder(Verb,-n), y = n)) +
+#   geom_histogram(stat = "identity", fill = "navy") +
+#   labs(title = "Most Common Verbs for 3000 Level", x = "Verb", y = "Number of appearances")+
+#   theme_classic() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-#Level3000
-d_level_plots %>%
-  filter(Level == 3) %>%
-  ggplot(aes(x = reorder(Verb,-n), y = n)) +
-  geom_histogram(stat = "identity", fill = "navy") +
-  labs(title = "Most Common Verbs for 3000 Level", x = "Verb", y = "Number of appearances")+
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
+###Breakdown by Concentration
+```{r concentration break down manual text analysis, warning = FALSE}
+concentrations <- ilo_data_clean%>% select(Concentration) %>% distinct %>% pull
+
+verbs_unrepeated <- ilo_data_clean %>%
+  group_by(Concentration, Verb)            %>%
+  mutate(n = n())                  %>%
+  select(Concentration, Verb, n)           %>%
+  distinct()
+
+d_concentration_plots <- verbs_unrepeated %>% 
+  group_by(Concentration)                 %>%
+  top_n(n = 20, wt = n)           %>%
+  ungroup()
+
+for (conc in concentrations){
+  plot <- d_concentration_plots %>%
+    filter(Concentration == conc) %>%
+    ggplot(aes(x = reorder(Verb,-n), y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Most Common Capacities for ", conc, sep = ""), x = "Capacity", y = "Number of appearances")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
 ```
