@@ -1,0 +1,48 @@
+---
+title: "Adding missing courses to ilos"
+author: "DARS"
+date: "7/15/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Libraries
+```{r, message = FALSE}
+library(tidyverse)
+library(readxl)
+```
+#Preparing Research Methodology file
+##Import all courses from catalogues and ILOs
+Source: DARS
+```{r import old}
+load("~/Documents/DARS/Fresh DARS/DARS/Output/d_text.RDATA")
+load("~/Documents/DARS/Fresh DARS/DARS/Output/data_general.RDATA")
+```
+#Remove non used imports
+```{r}
+rm(d_AoD, d_assessment, d_course, new_courses, new_courses_ilo,  list_AoD_assessment)
+```
+##Extract ILOs for PRO and CAP
+I extract the ILOs for PRO and CAP from `d_ILO`
+```{r}
+ilos_to_add <- d_ILO %>%
+  filter(str_detect(`Course ID`, "PRO|CAP")) %>%
+  select(Course = `Course ID`, ILO = Objectives) %>% 
+  mutate("Course_Intention/Student_profile" = NA_character_,
+         "Active/Impicit" = NA_character_,
+         `Methodology LO`= NA_character_,
+         `Methodology mentioned` = NA_character_,
+         Verb_used_1 = NA_character_,	
+         Verb_used_2 = NA_character_,	
+         Verd_used_3 = NA_character_,	
+         `Alternative capacity` = NA_character_)
+```
+
+#Save to new file
+```{r}
+write_excel_csv(ilos_to_add, path = "~/Documents/Summer UCM/ILO/Missing_ILOs.csv" )
+```
+
