@@ -30,6 +30,15 @@ library(stargazer) #table output
 
 ```{r import, warning = F}
 ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA"))
+
+```
+
+```{r missing ilos, eval = FALSE}
+ilo_data_missing <- read_excel("~/Documents/Summer UCM/ILO/Missing_ILOs.xlsx", na = c("", "NA"))
+
+ilo_data <- ilo_data %>% full_join(ilo_data_missing, by = Course)
+
+rm(ilo_data_missing)
 ```
 
 ```{r add course level and concentration label, warning = F}
@@ -56,9 +65,12 @@ This document presents a brief overview of the current state of the *Intended Le
 * [NOT DONE YET] Suggested rephrasing of current ILO's
 
 #A brief overview of our data
-For this analysis I used the *ILOs* for the year *2018/2019* provided by Edith. The *ILOs* of the projects (PRO) were missing from this file, and have therefore not been included in the subsequent analysis. I did have the *ILOs* for the Undergraduate Research Projects (UGR), so these are inlcuded.  
+For this analysis I used the *ILOs* for the year *2018/2019* provided by Edith. The *ILOs* of the projects (PRO) were missing from this file, and have therefore not been included in the subsequent analysis. (I did have the *ILOs* for the Undergraduate Research Projects (UGR), so these are inlcuded).
+
 The data contained a total of **`r no_courses`** **courses**, which amounted to **`r no_ilo`** **ILOs**.
 All quotes from *ILOs* are referenced with base to the `ILOs_2018_2019.docx` document.
+
+(It is possible to add some insight into the ILOs of projects and Capstone by using data from previous years. However, this old data does not include any of the ILOs for the new research projects, nor some of the ILOs for older projects, such as *Deep Reading*. The file is called "Missing_ILOs.xlsx" and is available for integration in the present report upon request).
 
 ##How many of ILOs do our courses have? (distribution per course)
 In general, the courses had an average of `r round(no_ilo/no_courses,1)` *ILOs* per course. Which were distributed as follows:
@@ -492,6 +504,56 @@ for (conc in concentrations){
 }
 ```
 
+#Mapping to Blooms taxonomy
+##Methodology
+**Objective:** To map the verbs used in the ILOs to the cognitive process dimension of Bloom's Taxonomy. 
+
+**Procedure:** 
+
+1) The verbs the previoulsy identified and standardised verbs from the ILOs were extracted and put into a separate Excel file.
+
+2) The verb was matched to a dimension on and mapped to Blooms dimensions using *Bloom's Taxonomy Verb Chart* form the University of Arkansas (available here: https://tips.uark.edu/blooms-taxonomy-verb-chart/) as a guide. 
+
+3) The file was imported back and the outcome can be seen below.
+
+##Brief description of Bloom's Taxonomy
+In general learning objectives are understood as consisting of two parts, usually a verb and a noun, corresponding to the 
+
+> "the kind of behavior to be developed in the student and the content . .. in which this behavior is to operate"(Tyler,1949, p. 30).
+
+Roughly, in Bloom's Taxonomy the behaviour or verb is refered to as the `cognitive process`. This is to promote an understandning of the verb in the learning objectives in terms of the cognitive activity of the student rather than their end behaviour. For instance, a learning objective of the kind "the student will be able to list..." implies (using Bloom) the simple act of remembering. In contrast, without emphasis on cognitive processes, a student might be required to analyse material from several sources and develop the list which they then communicate. This is far more complex than remembering and it is why the emphasis is made on cognitive activities to avoid ambiguity. 
+
+The levels of the congnitive process dimension in Bloom's taxonomy are:
+
+1. Remember - Retreive knowledge from long term memory.
+
+2. Understand - Construct meaning from materials.
+
+3. Apply - Carry out or use a procedure in a given situation.
+
+4. Analyse - Break material into constituent parts, and determine the relation between parts to one another and to an overall structure or purpose
+
+5. Evaluate - Make judgments based on criteria and standards
+
+6. Create - Put elements together to form a coherent or functional whole; reorganize elements into a new pattern or structure.
+
+(Anderson, Krathwohl & Bloom, 2001, "5.1 The cognitive process dimension")
+
+##Results
+```{r mapping to Blooms Taxonomy}
+ilo_bloom_export <- ilo_data_clean %>% 
+  select(Verb) %>% 
+  distinct() %>% 
+  mutate(Remember   = NA,
+         Understand = NA,
+         Apply      = NA,
+         Analyse    = NA,
+         Evaluate   = NA,
+         Create     = NA)
+
+write_excel_csv(ilo_bloom_export, path ="~/Documents/Summer UCM/ILO/Verb_chart.csv", na = "" )
+```
+
 #Methods in ILO's
 ```{r}
 no_ilo_methods <- ilo_data_clean %>% filter(`Methodology LO` == "M") %>% select(Course,ILO) %>% distinct %>% nrow()
@@ -521,3 +583,5 @@ knitr::kable(
 
 ```
 
+#Bibliography
+Anderson, L., Krathwohl, D., & Bloom, B. (2001). A taxonomy for learning, teaching, and assessing: a revision of Bloom’s taxonomy of educational objectives (Complete ed.). New York: Longman.
