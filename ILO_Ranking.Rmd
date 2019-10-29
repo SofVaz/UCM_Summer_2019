@@ -1,0 +1,28 @@
+---
+title: "ILO_ranking"
+author: "DARS"
+date: "9/27/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ranking
+We create a ranking of ILOs.
+Phrasing does not include tense used.
+
+```{r cars}
+ilo_ranking <- ilo_data %>% 
+  distinct() %>% 
+  select(Course,Level, ILO,`Course_Intention/Student_profile`, Concise, Clear_capacity, Clear_content, Phrasing, Measurable_behaviour, Level, Concentration) %>%
+  mutate(Orientation = case_when(
+    `Course_Intention/Student_profile` == 'S' ~ 1,
+    T ~ -1),
+    Rank = Concise + Clear_capacity + Clear_content + Phrasing  + Orientation
+    #+ Measurable_behaviour
+    ) %>%
+  arrange(desc(Rank))
+ilo_ranking
+```

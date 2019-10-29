@@ -29,7 +29,7 @@ library(stargazer) #table output
 ```
 
 ```{r import, warning = F}
-ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA"))
+ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA")) %>% distinct()
 
 ```
 
@@ -58,7 +58,7 @@ This document presents a brief overview of the current state of the *Intended Le
 
 * The most common capacities the ILOs promote broken down by Level and Concentration
 
-* [NOT DONE YET] A description of how the current objectives map to Bloom's Taxonomy of learning.
+* [In progress] A description of how the current objectives map to Bloom's Taxonomy of learning.
 
 * [NOT DONE YET] Recommendations on how to write ILOs
 
@@ -88,8 +88,35 @@ ilo_data %>%
 ```
 
 A breakdown by Level and Concentration gives:  
-[to be added]
+```{r distribution of ILOs per level, warning = FALSE}
+ilo_data %>% 
+  mutate(not_empty = !is.na(ILO)) %>% 
+  group_by(Course, Level) %>%
+  summarise(Number_ilos = sum(not_empty)) %>%
+  ungroup() %>%
+  group_by(Level) %>%
+  count(Number_ilos) %>% 
+  ggplot(aes(x = Number_ilos, y = n)) +
+  facet_wrap(~Level)+
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title= "Distribution of ILOs per Level", x = "Number of ILOs", y = "Number of Courses (with said number of ILOs)") +
+  theme_minimal()
+```
 
+```{r distribution of ILOs per Concentration, warning = FALSE}
+ilo_data %>% 
+  mutate(not_empty = !is.na(ILO)) %>% 
+  group_by(Course, Concentration) %>%
+  summarise(Number_ilos = sum(not_empty)) %>%
+  ungroup() %>%
+  group_by(Concentration) %>%
+  count(Number_ilos) %>% 
+  ggplot(aes(x = Number_ilos, y = n)) +
+  facet_wrap(~Concentration)+
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title= "Distribution of ILOs per Concentration", x = "Number of ILOs", y = "Number of Courses (with said number of ILOs)") +
+  theme_minimal()
+```
 ##With what orientation are they written? (Student vs. Course)
 It was possible to distinguish two categories in the way *ILOs* were formulated. *ILOs* were either as student (S) oriented or course (C) oriented.
 **Student oriented** *ILOs* described what the student was supposed to achieve or have learned during the course, whilst **course oriented** *ILOs* described the aims of the course. For example:  
@@ -540,7 +567,8 @@ The levels of the congnitive process dimension in Bloom's taxonomy are:
 (Anderson, Krathwohl & Bloom, 2001, "5.1 The cognitive process dimension")
 
 ##Results
-```{r mapping to Blooms Taxonomy}
+```{r mapping to Blooms Taxonomy, eval = F}
+# Used to create mapping manually input
 ilo_bloom_export <- ilo_data_clean %>% 
   select(Verb) %>% 
   distinct() %>% 
@@ -553,6 +581,132 @@ ilo_bloom_export <- ilo_data_clean %>%
 
 write_excel_csv(ilo_bloom_export, path ="~/Documents/Summer UCM/ILO/Verb_chart.csv", na = "" )
 ```
+Mapping the verbs used according to the capacity, we have:
+```{r import verbs mapping to bloom}
+blooms_mapping_data <- read_excel("~/Documents/Summer UCM/ILO/Verb_chart.xlsx", na = c("", "NA"))
+```
+
+```{r print blooms verbs, results = "asis"}
+knitr::kable(
+  x = blooms_mapping_data, 
+  
+  caption = "Table of verbs and their corresponding cognitive dimensions"
+  )
+```
+
+```{r blooms taxonomy in ILOs}
+ilo_with_bloom <- ilo_data_clean %>% left_join(blooms_mapping_data, by = "Verb")
+```
+### Graphically
+####Across all courses
+```{r bloom all courses, warning = FALSE}
+cognitive_process_unrepeated <- ilo_with_bloom %>%
+  gather(key = "Cognitive_Process", value = "Value_Cognitive_Process", Remember:Create) %>%
+  filter(Value_Cognitive_Process == 1)
+
+cognitive_process_tmp <- cognitive_process_unrepeated %>%
+  group_by(Cognitive_Process)  %>%
+  mutate(n = n()) %>%
+  select(Cognitive_Process, n) %>%
+  distinct()  
+
+cognitive_process_tmp        %>%
+  ggplot(aes(x = reorder(Cognitive_Process,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Cognitive Processes across all Courses", x = "Cognitive Process", y = "Number of appearances") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+####Breakdown by Level
+```{r bloom level break down, warning = FALSE}
+cognitive_process_tmp <- cognitive_process_unrepeated %>%
+  group_by(Level, Cognitive_Process)  %>%
+  mutate(n = n()) %>%
+  select(Level,Cognitive_Process, n) %>%
+  distinct() 
+
+for (lev in levels){
+  plot <- cognitive_process_tmp %>%
+    filter(Level == lev) %>%
+    ggplot(aes(x = Cognitive_Process, y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Cognitive Process for ", lev, "000 Level", sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+```
+
+####Breakdown by Concentration
+```{r bloom concentration, warning = FALSE}
+cognitive_process_tmp <- cognitive_process_unrepeated %>%
+  group_by(Concentration, Cognitive_Process)  %>%
+  mutate(n = n()) %>%
+  select(Concentration,Cognitive_Process, n) %>%
+  distinct() 
+
+for (conc in concentrations){
+  plot <- cognitive_process_tmp %>%
+    filter(Concentration == conc) %>%
+    ggplot(aes(x = Cognitive_Process, y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Cognitive Process for ", conc, sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+#TO DO: AVOID DROPPING EMPTY COLUMN
+```
+
+##Quality of ILOs
+According to the UM framework of Constructive Alignment at Course Level, "an ILO is well-formulated when a student who reads the ILO knows what to do and how well to do it in order to achieve the ILO." (https://constructivealignment.maastrichtuniversity.nl/ilos-course-level/)
+For which an ILO must be:
+1) Fromulated from the student's perspective
+2) Clarify the type of knowledge
+3) Clarify the topics that will be taught/learned
+4) Clarify the level of understanding or performance (and how this achievement is displayed) of each chosen topic.
+
+Taking this into account the following criteria were developed to evaluate the quality of ILOs:
+
+1) Formulated from student perspective (0,1):
+2) Concise (-1, 0 , 1)
+The ILO has a single cognitive process or a single knowledge dimension, or there is a clear strong relation between them.
+3) Clear Capacity (-1, 0 , 1)
+Clear what student needs to do, (ideally it is measurable/observable), it should be fairly easy to move from this to assessment
+4) Clear Content (-1, 0 , 1)
+Content is clear and has specific terminology that could be identified by someone in the field who does not teach the course. 
+5) Measurable behaviour (0, 1)
+The cognitive process dimension is observable. [TO BE FINISHED]
+6) Phrasing (-1, 0 , 1)
+Clear concise and simple phrasing with no spelling or grammatical errors. 
+
+Note:Clear Capacity was separated from measurable behaviour to allow for verbs such as "understand" to be included in clear capacity, however it is not obvious how moves from there to assessment, which would be if observable behaviours where used. 
+```{r quality}
+ilo_quality_data <-  ilo_data_clean %>% select(Course, ILO, `Course_Intention/Student_profile`, Concise, Clear_capacity, Clear_content, Phrasing #, Measurable_behaviour
+                                               )
+
+ilo_ranking <- ilo_quality_data %>% 
+  mutate(Student_perspective = case_when(
+    `Course_Intention/Student_profile` == "C" ~0,
+    `Course_Intention/Student_profile` == "S" ~1)) %>%
+  select(-`Course_Intention/Student_profile`) %>%
+  mutate(ranking = Concise + Clear_capacity + Clear_content + Phrasing +
+         #+ Measurable_behaviour 
+           Student_perspective) %>%
+  arrange(desc(ranking))
+
+knitr::kable(ilo_ranking %>% select(Course, ILO, ranking, everything())%>% head(20))
+```
+
+#Examples of Rephrasing ILOs
+Bellow some examples of how ILOs could be rephrased:
+```{r rephrased ilos, results = "asis"}
+rephrased_ilos <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019_rephrased.xlsx")
+
+knitr::kable(rephrased_ilos %>% select(Course, ILO, ILO_new, Changed) %>% filter(!is.na(Changed)))
+```
+
 
 #Methods in ILO's
 ```{r}
@@ -570,8 +724,8 @@ paste_collapse <- function(vector){
 }
 
 methodology_ilos <- ilo_data_clean %>% 
-  filter(`Methodology LO` == "M") %>% 
-  select(Course, ILO, Verb) %>% 
+  filter(`Methodology LO` == "M")  %>% 
+  select(Course, ILO, Verb)        %>% 
   group_by(Course, ILO) %>%
   mutate(Verbs_used = paste_collapse(Verb)) %>% select(-Verb) %>% distinct() %>% arrange(Course)
 
@@ -581,6 +735,14 @@ knitr::kable(
   caption = "ILOs concenrning to methodology"
   )
 
+```
+
+```{r export methodology ilos}
+write_csv(methodology_ilos, path = "~/Documents/Summer UCM/Methodology/Methodology_ilos.csv" )
+```
+#Test
+```{r}
+ilo_data
 ```
 
 #Bibliography
