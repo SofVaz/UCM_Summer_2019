@@ -1,0 +1,39 @@
+---
+title: "Methodology Report"
+author: "DARS"
+date: "7/15/2019"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r libraries, include = F}
+library(tidyverse)
+library(stringr)
+library(readxl)
+library(tidytext)
+library(udpipe) #language model
+library(stargazer) #table output
+library(pdftools)
+```
+
+# Methodology in Explicit ILOs
+
+```{r read csv, warning = F}
+methodology_from_ilos <- read_csv("~/Documents/Summer UCM/Methodology/Methodology_ilos.csv", 
+                                  col_names = TRUE, 
+                                  col_types = cols(
+                                    Course = col_character(),
+                                    ILO = col_character(),
+                                    Verbs_used = col_character())
+)
+```
+
+#Adding methodology from course manuals
+```{r}
+manual_file <- 
+pdf_text()
+```
+
