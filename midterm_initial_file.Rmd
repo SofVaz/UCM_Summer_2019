@@ -1,0 +1,26 @@
+---
+title: "Midterm"
+author: "DARS"
+date: "9/30/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+courses <- ilo_data %>% select(Course) %>% distinct()
+write_excel_csv(courses, "~/Documents/Summer UCM/Midterm.csv")
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
