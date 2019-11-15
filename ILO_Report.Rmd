@@ -717,6 +717,7 @@ for (clust in clusters){
 #TO DO: AVOID DROPPING EMPTY COLUMN
 ```
 ## Quality of ILOs
+
 According to the UM framework of Constructive Alignment at Course Level, "an ILO is well-formulated when a student who reads the ILO knows what to do and how well to do it in order to achieve the ILO." (https://constructivealignment.maastrichtuniversity.nl/ilos-course-level/)
 For which an ILO must be:
 1) Fromulated from the student's perspective
