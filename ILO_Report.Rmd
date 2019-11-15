@@ -716,7 +716,7 @@ for (clust in clusters){
 }
 #TO DO: AVOID DROPPING EMPTY COLUMN
 ```
-##Quality of ILOs
+## Quality of ILOs
 According to the UM framework of Constructive Alignment at Course Level, "an ILO is well-formulated when a student who reads the ILO knows what to do and how well to do it in order to achieve the ILO." (https://constructivealignment.maastrichtuniversity.nl/ilos-course-level/)
 For which an ILO must be:
 1) Fromulated from the student's perspective
@@ -756,7 +756,7 @@ ilo_ranking <- ilo_quality_data %>%
 knitr::kable(ilo_ranking %>% select(Course, ILO, ranking, everything())%>% head(20))
 ```
 
-#Examples of Rephrasing ILOs
+# Examples of Rephrasing ILOs
 Bellow some examples of how ILOs could be rephrased:
 ```{r rephrased ilos, results = "asis"}
 rephrased_ilos <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019_rephrased.xlsx")
