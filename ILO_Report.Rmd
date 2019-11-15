@@ -530,7 +530,41 @@ for (conc in concentrations){
   print(plot)
 }
 ```
+#### Breakdown by Cluster
+```{r cluster break down manual text analysis, warning = FALSE}
+cluster_data <- read_excel("Clusters_simple.xlsx")
 
+clusters <- cluster_data%>% select(Cluster) %>% distinct %>% pull
+
+courses_no_cluster <- ilo_data_clean %>%
+  left_join(cluster_data, by = "Course") %>%
+  filter(is.na(Cluster)) %>% 
+  select("Course") %>% 
+  distinct()
+
+verbs_unrepeated <- ilo_data_clean %>%
+  left_join(cluster_data, by = "Course") %>%
+  group_by(Cluster, Verb)            %>%
+  mutate(n = n())                  %>%
+  select(Cluster, Verb, n)           %>%
+  distinct()
+
+d_cluster_plots <- verbs_unrepeated %>% 
+  group_by(Cluster)                 %>%
+  top_n(n = 20, wt = n)           %>%
+  ungroup()
+
+for (clust in clusters){
+  plot <- d_cluster_plots %>%
+    filter(Cluster == clust) %>%
+    ggplot(aes(x = reorder(Verb,-n), y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Most Common Capacities for ", clust, sep = ""), x = "Capacity", y = "Number of appearances")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+```
 #Mapping to Blooms taxonomy
 ##Methodology
 **Objective:** To map the verbs used in the ILOs to the cognitive process dimension of Bloom's Taxonomy. 
@@ -595,7 +629,9 @@ knitr::kable(
 ```
 
 ```{r blooms taxonomy in ILOs}
-ilo_with_bloom <- ilo_data_clean %>% left_join(blooms_mapping_data, by = "Verb")
+ilo_with_bloom <- ilo_data_clean %>% 
+  left_join(blooms_mapping_data, by = "Verb") %>%
+  left_join(cluster_data, by = "Course")
 ```
 ### Graphically
 ####Across all courses
@@ -658,7 +694,28 @@ for (conc in concentrations){
 }
 #TO DO: AVOID DROPPING EMPTY COLUMN
 ```
+#### Breakdown by Cluster
+Breakdown by cluster and level (levels appear as 1 = 1000, 2 = 2000, 3 = 3000)
+```{r bloom cluster, warning = FALSE}
+cognitive_process_tmp <- cognitive_process_unrepeated %>%
+  group_by(Cluster, Level, Cognitive_Process)  %>%
+  mutate(n = n()) %>%
+  select(Cluster,Level, Cognitive_Process, n) %>%
+  distinct() 
 
+for (clust in clusters){
+  plot <- cognitive_process_tmp %>%
+    filter(Cluster == clust) %>%
+    ggplot(aes(x = Cognitive_Process, y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Cognitive Process for ", clust, sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
+    facet_grid(~Level)+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+#TO DO: AVOID DROPPING EMPTY COLUMN
+```
 ##Quality of ILOs
 According to the UM framework of Constructive Alignment at Course Level, "an ILO is well-formulated when a student who reads the ILO knows what to do and how well to do it in order to achieve the ILO." (https://constructivealignment.maastrichtuniversity.nl/ilos-course-level/)
 For which an ILO must be:
@@ -706,7 +763,50 @@ rephrased_ilos <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019_rephrased
 
 knitr::kable(rephrased_ilos %>% select(Course, ILO, ILO_new, Changed) %>% filter(!is.na(Changed)))
 ```
+# Students Profiles Bloom
+```{r ilo ranking averages}
+#quality per course
+no_ilo_per_course <- ilo_ranking %>% group_by(Course) %>% summarize(n = n())
+ilo_ranking  %>% group_by(Course) %>% summarise_at(vars(Concise, Clear_capacity, Clear_content, Phrasing, Student_perspective, ranking), sum) %>% left_join(no_ilo_per_course, by = "Course")
 
+ilo_ranking  %>% group_by(Course) %>% summarise_at(vars(Concise, Clear_capacity, Clear_content, Phrasing, Student_perspective, ranking), mean) %>% left_join(no_ilo_per_course, by = "Course")
+
+```
+A very basic sketch of how things are aggregated (here we take every ILO to count equally).
+```{r aggreagated bloom by course}
+course_aggregated_bloom <- ilo_with_bloom %>% 
+  select(Course, Remember, Understand, Apply, Analyse, Evaluate, Create) %>%
+  group_by(Course) %>%
+  summarize_at(vars(Remember, Understand, Apply, Analyse, Evaluate, Create), sum)
+
+#Cleaning NA
+#course_aggregated_bloom %>% filter_all(any_vars(is.na(.)))
+```
+For some courses we do not have the ilos, therefore we do an inner_join
+```{r student Bloom profile}
+#ilo_data <- import("~/Documents/DARS/Fresh DARS/DARS/Output/data_general.RDATA") # contains d_AoD, d_assessment, d_course, d_ILO
+load("~/Documents/DARS/Fresh DARS/DARS/Output/data_student.RDATA") # contains d_transcript, d_transcript augmented.
+
+student_bloom_profile <- d_transcript %>% 
+  inner_join(course_aggregated_bloom, by = c("Course ID" = "Course")) %>%
+  mutate_at(vars(Remember, Understand, Apply, Analyse, Evaluate, Create), funs(weighted = ./Grade))
+```
+
+###Visualising Students Bloom
+```{r student visual}
+student_sample = c(sample(student_bloom_profile$`Student ID`%>% unique(),10 ))
+s_student = student_sample[1]
+
+student_bloom_profile %>% group_by(`Student ID`) %>%
+  summarise_at(vars(Remember, Understand, Apply, Analyse, Evaluate, Create), sum) %>%
+  gather(key = "Cognitive_Process", value = "Value", Remember:Create) %>%
+  filter(`Student ID` == s_student) %>% # here we select
+  ggplot(aes(x = Cognitive_Process, y = Value))+
+  geom_bar(stat = "identity", fill = "navy") +
+  labs(title= paste("Cognitive Processes for", s_student, "accross all their courses", sep = " ")) +
+  theme_minimal()
+
+```
 
 #Methods in ILO's
 ```{r}
@@ -737,13 +837,11 @@ knitr::kable(
 
 ```
 
-```{r export methodology ilos}
+```{r export methodology ilos, eval = F}
+#create the csv for analytsing methodology ilos
 write_csv(methodology_ilos, path = "~/Documents/Summer UCM/Methodology/Methodology_ilos.csv" )
 ```
-#Test
-```{r}
-ilo_data
-```
+
 
 #Bibliography
 Anderson, L., Krathwohl, D., & Bloom, B. (2001). A taxonomy for learning, teaching, and assessing: a revision of Bloom’s taxonomy of educational objectives (Complete ed.). New York: Longman.
