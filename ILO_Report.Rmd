@@ -842,7 +842,70 @@ knitr::kable(
 #create the csv for analytsing methodology ilos
 write_csv(methodology_ilos, path = "~/Documents/Summer UCM/Methodology/Methodology_ilos.csv" )
 ```
+# Missing ILO
 
+I'm missing the ILOs of the following UCM courses (they appear in transcripts):
+
+```{r missing}
+collapse_or_2 <- function(string_vector){
+  paste(string_vector, collapse ="|")
+}
+
+courses_with_ilo_data <- ilo_data %>% select(Course) %>% distinct
+UCM_codes <- courses_with_ilo_data %>% transmute(strings = str_sub(Course,1, 3)) %>% unique() %>% pull()
+UCM_codes <- c(UCM_codes, "CAP")
+
+
+all_courses <- d_transcript %>% select(`Course ID`) %>% distinct() %>% arrange(`Course ID`)
+
+no_ilo_courses <- all_courses %>% anti_join(courses_with_ilo_data, by = c("Course ID" ="Course")) 
+no_ilo_ucm_courses <- no_ilo_courses %>% mutate(is_UCM = str_detect(`Course ID`, collapse_or_2(UCM_codes))) %>% filter(is_UCM == TRUE)
+```
+Total: 
+
+```{r print missing}
+print(dim(no_ilo_ucm_courses %>% select(`Course ID`))[1])
+
+knitr::kable(no_ilo_ucm_courses %>% select(`Course ID`))
+```
+## Missing from ILO file with cluster:
+
+The following courses from the cluster groups are missing from my ILO file:
+
+```{r missing from ilos in cluster file}
+# Courses included in ILO file 
+test_courses_w_ilos<- ilo_data %>% select(Course) %>% unique() %>% mutate(ILO = T)
+
+# Courses in cluster data
+
+test_courses_w_cluster <- cluster_data %>% mutate(has_Cluster = T)
+
+# Test
+test_join <- test_courses_w_cluster %>% full_join(test_courses_w_ilos, by = "Course")
+
+# Couses in cluster with no ilos
+with_cluster_without_ilo <- test_join %>% filter(is.na(ILO)) %>% unique()
+with_ilo_without_cluster <- test_join %>% filter (is.na(has_Cluster)) %>% unique()
+
+
+
+# Courses in clusters with no ILO
+# cluster_data %>% left_join(no_ilo_ucm_courses, by = c("Course" = "Course ID")) %>% filter(!is.na(is_UCM)) %>%
+# select(-is_UCM)
+# Courses with no ilo and no cluster
+# cluster_data %>% inner_join(no_ilo_ucm_courses, by = c("Course" = "Course ID")) %>% select(-is_UCM)
+
+knitr::kable(with_cluster_without_ilo %>% select(Course, Cluster))
+
+```
+
+## Missing from Cluster File
+The following courses have ILO data but have not been assigned a cluster (WARNING, THE COURSES ARE PROBABLY DISCONTINUED THIS YEAR):
+
+```{r missing cluster}
+
+knitr::kable(with_ilo_without_cluster %>% select(Course))
+```
 
 #Bibliography
 Anderson, L., Krathwohl, D., & Bloom, B. (2001). A taxonomy for learning, teaching, and assessing: a revision of Bloom’s taxonomy of educational objectives (Complete ed.). New York: Longman.
