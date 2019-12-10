@@ -1,0 +1,912 @@
+---
+title: "The state of ILOs - Report(Copy)"
+knit: (function(input_file, encoding) {
+  out_dir <- 'docs';
+  rmarkdown::render(input_file,
+ encoding=encoding,
+ output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+author: "Sofia Vazquez Alferez (DARS, University College Maastricht"
+date: "08/07/2019"
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r libraries, include = F}
+library(tidyverse)
+library(stringr)
+library(readxl)
+library(tidytext)
+library(udpipe)    # language model
+library(stargazer) # table output
+```
+
+```{r import, warning = F}
+ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA")) %>% distinct()
+
+```
+
+```{r missing ilos, eval = FALSE}
+ilo_data_missing <- read_excel("~/Documents/Summer UCM/ILO/Missing_ILOs.xlsx", na = c("", "NA"))
+
+ilo_data <- ilo_data %>% full_join(ilo_data_missing, by = Course)
+
+rm(ilo_data_missing)
+```
+
+```{r add course level and concentration label, warning = F}
+ilo_data <- ilo_data %>% mutate(Level = str_sub(Course, start = 4, end = 4), Concentration = str_sub(Course, start = 1, end = 3))
+```
+
+```{r number of courses}
+no_courses <- ilo_data %>% select(Course) %>% unique() %>% count() %>% pull(n)
+no_ilo <- ilo_data %>% transmute(not_empty = !is.na(ILO)) %>% summarize(total_ilos = sum(not_empty)) %>% pull(total_ilos)
+```
+#Abstract
+This document presents a brief overview of the current state of the *Intended Learning Objectives* (hereafter *ILO*). Including information on:
+
+* The number of ILOs in our courses.
+
+* The orientation of language used in ILOs
+
+* The most common capacities the ILOs promote broken down by Level and Concentration
+
+* [In progress] A description of how the current objectives map to Bloom's Taxonomy of learning.
+
+* [NOT DONE YET] Recommendations on how to write ILOs
+
+* [NOT DONE YET] Suggested rephrasing of current ILO's
+
+#A brief overview of our data
+For this analysis I used the *ILOs* for the year *2018/2019* provided by Edith. The *ILOs* of the projects (PRO) were missing from this file, and have therefore not been included in the subsequent analysis. (I did have the *ILOs* for the Undergraduate Research Projects (UGR), so these are inlcuded).
+
+The data contained a total of **`r no_courses`** **courses**, which amounted to **`r no_ilo`** **ILOs**.
+All quotes from *ILOs* are referenced with base to the `ILOs_2018_2019.docx` document.
+
+(It is possible to add some insight into the ILOs of projects and Capstone by using data from previous years. However, this old data does not include any of the ILOs for the new research projects, nor some of the ILOs for older projects, such as *Deep Reading*. The file is called "Missing_ILOs.xlsx" and is available for integration in the present report upon request).
+
+##How many of ILOs do our courses have? (distribution per course)
+In general, the courses had an average of `r round(no_ilo/no_courses,1)` *ILOs* per course. Which were distributed as follows:
+
+```{r distribution of ILOs per course, warning = FALSE}
+ilo_data %>% 
+  mutate(not_empty = !is.na(ILO)) %>% 
+  group_by(Course) %>%
+  summarise(Number_ilos = sum(not_empty)) %>%
+  count(Number_ilos) %>% 
+  ggplot(aes(x = Number_ilos, y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title= "Distribution of ILOs per Course", x = "Number of ILOs", y = "Number of Courses (with said number of ILOs)") +
+  theme_minimal()
+```
+
+A breakdown by Level and Concentration gives:  
+```{r distribution of ILOs per level, warning = FALSE}
+ilo_data %>% 
+  mutate(not_empty = !is.na(ILO)) %>% 
+  group_by(Course, Level) %>%
+  summarise(Number_ilos = sum(not_empty)) %>%
+  ungroup() %>%
+  group_by(Level) %>%
+  count(Number_ilos) %>% 
+  ggplot(aes(x = Number_ilos, y = n)) +
+  facet_wrap(~Level)+
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title= "Distribution of ILOs per Level", x = "Number of ILOs", y = "Number of Courses (with said number of ILOs)") +
+  theme_minimal()
+```
+
+```{r distribution of ILOs per Concentration, warning = FALSE}
+ilo_data %>% 
+  mutate(not_empty = !is.na(ILO)) %>% 
+  group_by(Course, Concentration) %>%
+  summarise(Number_ilos = sum(not_empty)) %>%
+  ungroup() %>%
+  group_by(Concentration) %>%
+  count(Number_ilos) %>% 
+  ggplot(aes(x = Number_ilos, y = n)) +
+  facet_wrap(~Concentration)+
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title= "Distribution of ILOs per Concentration", x = "Number of ILOs", y = "Number of Courses (with said number of ILOs)") +
+  theme_minimal()
+```
+##With what orientation are they written? (Student vs. Course)
+It was possible to distinguish two categories in the way *ILOs* were formulated. *ILOs* were either as student (S) oriented or course (C) oriented.
+**Student oriented** *ILOs* described what the student was supposed to achieve or have learned during the course, whilst **course oriented** *ILOs* described the aims of the course. For example:  
+
+1. Student Oriented *ILO*:  
+
+> “To offer a broad overview of scientific models” (COR1005, p. 1)  
+  “To acquaint students with the problems…” (HUM2030, p.3)  
+  “To enhance their research skills” (SKI1009, p.11)  
+  
+2. Course Oriented *ILO*:  
+
+> “Apply basic bookkeeping techniques” (SSC2022, p.15)  
+  “To reflect on the relevance and utility of social theory in general”(SSC2028, p.15)
+
+A few courses had some *ILOs* formulated in a student oriented fashion and others *ILOs* in a course oriented fashion. Thus, overview bellow is done at a granularity of *ILO* not courses.
+
+In general, this is what we have in the curriculum in raw numbers:
+
+```{r course orientation, warning = FALSE}
+ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
+  ggplot(aes(x = `Course_Intention/Student_profile`, y = n, label = n)) +
+  geom_histogram(stat = "identity", fill = "navy")+
+  geom_text(vjust = -0.5) +
+  labs(title = "ILO formulation orientation", x = "Course (C) vs Student (S) Orientation", y = "Number of ILOs")+
+  theme_classic()
+  
+```
+
+In percentages, we have the following:
+
+```{r orientation percentage, warning = FALSE}
+ilo_data %>% select(`Course_Intention/Student_profile`) %>% group_by(`Course_Intention/Student_profile`) %>% count() %>%
+  ungroup() %>%
+  mutate(percentage = n*100/sum(n)) %>%
+  ggplot(aes(x = `Course_Intention/Student_profile`, y = percentage, label = round(percentage))) +
+  geom_histogram(stat = "identity", fill = "navy")+
+  geom_text(vjust = -0.5) +
+  labs(title = "ILO formulation orientation", x = "Course (C) vs Student (S) Orientation", y = "Percentage of ILOs [rounded]")+
+  theme_classic()
+  
+```
+###Inspecting NA orientation category
+The `NA` category represents courses that I did not classify in any of those categories. They were the following *ILOs*:
+
+```{r Orientation unclear, results = "asis"}
+knitr::kable(
+  x = ilo_data %>% 
+    filter(is.na(`Course_Intention/Student_profile`)) %>% 
+    select(Course, ILO), 
+  
+  caption = "Table of ILOs wihout orientation category"
+  )
+```
+
+#Analysing our ILOs
+
+##Methodology
+
+###Phase 1- Verb extraction
+In order to get a better grasp of the characterization of our *ILOs*, I manually went through all *ILOs* and extracted the verb(s) describing what the student was supposed to do in each *ILO*. This created a distiction between the course verb and the student verb, as well as between the `action verb` and the `intended verb`.  For instance:  
+
+**1. Course verb/Student verb:**  
+For the ILO "to provide students with [...] perspectives to examine..." (COR1004, p.1) the extracted verb is "[to] examine" not "[to] provide". 
+
+**2. Action verb/Intended verb:** 
+For the ILO "to have the ability to interpret dynamical phenomena..."(SCI3006, p. 9) the verb "[to] interpret" was extracted not "[to] have (the ability)".  
+
+In cases where the verb used was missleading, descriptive words were included. For instance, in the ILO "Gain basic knowledge in using economic/statistical data and present them in an informative way" (SSC2038, p. 15), the words "Gain basic knowledge" were recorded, as opposed to simply "[to] gain". For this specific ILO, the verbs "use" and "present" were also extracted, as each ILO could have more than one verb associated to them. 
+
+During this phase I tried to keep as close as possible to the original formulation, although as I advanced through the *ILOs* I started to adapt some of the formulations to create some consistency with previously encountered data. Thus, particularily at the end formulations such as "to perform an analysis" were simply extracted as "analyse". Moreover, because of this fidelity principle, some of the verbs for ilos were not verbs at all but conveyed the expected outcome. For instance, "overview" was extracted from the following ILO: "To give an overview over the different media platforms and media practices" (HUM2022, p.3), since the student was suppoded to 'get an overview'.
+
+This phase was performed in Excel and all extracted verbs were recorded in the same row as the original formulation, so it is possible to trace back the work and contest my check my interpretations.
+
+In the following list, it is possible to see all the verbs that were extracted:
+
+```{r clean ilo data}
+ilo_data_clean <- ilo_data %>% 
+  mutate(Verb_used_1 = case_when(is.na(Verb_used_1)~"NaN",
+                                            T~Verb_used_1))      %>%
+  gather(key = tmp_place, value = Verb, Verb_used_1:Verd_used_3) %>% 
+  select(-tmp_place) %>% 
+  filter(!is.na(Verb)) %>% 
+  mutate(Verb = map_chr(Verb, function(x) str_replace(x,"NaN",NA_character_)))
+```
+
+```{r dirty verbs}
+dirty_verbs <- ilo_data_clean %>% pull(Verb) %>% unique()
+```
+```{r print dirty verbs, results = "asis"}
+knitr::kable(
+  x = tibble(Verbs = dirty_verbs), 
+  
+  caption = "Extracted verbs after Phase 1"
+  )
+```
+
+###Phase 2- Standardisation  
+As you can see, some verbs are really similar. For example, we have: "to understand", "understand" and "basic understanding". Therefore, in `Phase 2` I standardised some of the vocabulary. All of the previous words were replaced by the same words: "understand". Here is an overview of the replacements:
+
+```{r collapse or}
+collapse_or <- function(string_vector){
+  paste(string_vector, collapse ="$|^")
+}
+```
+
+```{r search for equivalence}
+#UNDERSTAND
+understand_eq <- ilo_data_clean %>% filter(str_detect(Verb, "understa")) %>% pull(Verb) %>% unique()
+# print(paste('"understand":', paste(understand_eq, collapse = ", "), sep = " "))
+
+#KNOW
+know_eq <- ilo_data_clean %>% filter(str_detect(Verb, "know")) %>% pull(Verb) %>% unique()
+# print(paste('"know":', paste(know_eq, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
+
+#[GAIN] FAMILIARITY
+familiarise_eq <- ilo_data_clean %>% filter(str_detect(Verb, "familia")) %>% pull(Verb) %>% unique()
+# print(paste('"[gain] familiarity":', paste(familiarise_eq, collapse = ", "), sep = " "))
+
+#ANALYSE
+analyse_eq <- ilo_data_clean %>% filter(str_detect(Verb, "analy")) %>% pull(Verb) %>% unique()
+# print(paste('"analyse":', paste(analyse_eq, collapse = ", "), sep = " "))
+
+#[BE] INTRODUCED
+introduce_eq <- ilo_data_clean %>% filter(str_detect(Verb, "introd")) %>% pull(Verb) %>% unique()
+# print(paste('"[be] introduced":', paste(introduce_eq, collapse = ", "), sep = " "))
+
+#[GET] OVERVIEW
+overview_eq <- ilo_data_clean %>% filter(str_detect(Verb, "overv")) %>% pull(Verb) %>% unique()
+# print(paste('"[get] overview":', paste(overview_eq, collapse = ", "), sep = " "))
+
+#[GET] ACQUAINTED
+acquainted_eq <- ilo_data_clean %>% filter(str_detect(Verb, "acquain")) %>% pull(Verb) %>% unique()
+# print(paste('"[get] acquainted":', paste(acquainted_eq, collapse = ", "), sep = " "))
+```
+
+```{r equivanlent classes}
+#UNDERSTAND
+understand_equivalence <- setdiff(understand_eq, c(""))
+print(paste('The verbs that were taken to be the same as "understand" are:', paste(understand_equivalence, collapse = ", "), sep = " "))
+
+#KNOW
+know_equivalence <- setdiff(know_eq, c("use knowledge","gain basic practical knowledge"))
+print(paste('The verbs that were taken to be the same as "know" are:', paste(know_equivalence, collapse = ", "), sep = " ")) # "gain "basic practial knowledge" and "use knowledge" might not be correct here rather in "apply".
+
+#[GAIN] FAMILIARITY
+familiarise_equivalence <- setdiff(familiarise_eq, c(""))
+print(paste('The verbs that were taken to be the same as "[gain] familiarity" are:', paste(familiarise_equivalence, collapse = ", "), sep = " "))
+
+#ANALYSE
+analyse_equivalence <- setdiff(analyse_eq, c("to further (research, analyical and writing skills)", "define/analyse/answer", "reason analyticaly", "think analytically"))
+print(paste('The verbs that were taken to be the same as "analyse" are:', paste(analyse_equivalence, collapse = ", "), sep = " "))
+
+#[BE] INTRODUCED
+introduce_equivalence <- setdiff(introduce_eq, c(""))
+print(paste('The verbs that were taken to be the same as "[be] introduced" are:', paste(introduce_equivalence, collapse = ", "), sep = " "))
+
+#[GET] OVERVIEW
+overview_equivalence <- setdiff(overview_eq, c(""))
+print(paste('The verbs that were taken to be the same as "[get] overview" are:', paste(overview_equivalence, collapse = ", "), sep = " "))
+
+#[GET] ACQUAINTED
+acquainted_equivalence <- setdiff(acquainted_eq, c(""))
+print(paste('The verbs that were taken to be the same as "[get] acquainted" are:', paste(acquainted_equivalence, collapse = ", "), sep = " "))
+
+```
+
+```{r cleaning other verbs}
+#Clean functions
+remove_to <- function(string){
+  str_replace(string, "to ", "")
+}
+
+#Standardize functions
+standardize_knowing <- function(string){
+  str_replace(string, collapse_or(know_equivalence), "know")
+}
+
+standardize_understand <- function(string){
+  str_replace(string, collapse_or(understand_equivalence), "understand")
+}
+
+standardize_familiarity <- function(string){
+  str_replace(string, collapse_or(familiarise_equivalence), "[gain] familiarity")
+}
+
+standardize_analyse <- function(string){
+  str_replace(string, collapse_or(analyse_equivalence), "analyse")
+}
+
+standardize_introduce <- function(string){
+  str_replace(string, collapse_or(introduce_equivalence), "[be] introduced")
+}
+
+standardize_overview <- function(string){
+  str_replace(string, collapse_or(overview_equivalence), "[get] overview")
+}
+
+standardize_acquainted <- function(string){
+  str_replace(string, collapse_or(acquainted_equivalence), "[get] acquainted")
+}
+```
+
+```{r apply standarization}
+ilo_data_clean <- ilo_data_clean %>% 
+  mutate(
+    Verb = map_chr(Verb, standardize_knowing),
+    Verb = map_chr(Verb, standardize_understand),
+    Verb = map_chr(Verb, standardize_familiarity),
+    Verb = map_chr(Verb, standardize_analyse),
+    Verb = map_chr(Verb, standardize_introduce),
+    Verb = map_chr(Verb, standardize_overview),
+    Verb = map_chr(Verb, standardize_acquainted),
+    Verb = map_chr(Verb, function(string) str_replace(string, "to ", "")) #,
+    #Verb = map_chr(Verb, function(string) str_replace(string, "^na$", NA_character_)) #this should not be necessary anymore.
+  ) 
+```
+
+The result is a table like this:
+```{r view clean ilos, results = "asis"}
+knitr::kable(
+  x = ilo_data_clean %>% select(Course, ILO, Verb) %>% arrange(Course, ILO)%>% head(13), 
+  
+  caption = "Table of ILOs with extravted standardized verb"
+  )
+```
+
+##Results
+
+###Rough numeric overview:
+
+```{r summary statistics}
+ilo_verb_stats_data <- ilo_data_clean %>%
+  mutate(not_na_verb = 
+           case_when(is.na(Verb) ~ 0, # makes NA verbs not count. 
+             T ~1)) %>%
+  group_by(Course, ILO) %>% 
+  mutate(Verbs_per_ILO = sum(not_na_verb)) %>%
+  ungroup() %>%
+  select(Course, Level, Concentration, ILO, Verbs_per_ILO) %>%
+  distinct() %>%
+  group_by(Course) %>%
+  mutate(ilo_per_course = n(),
+         verbs_per_course = sum(Verbs_per_ILO)) %>%
+  ungroup()
+
+total_verb_objectives <- ilo_verb_stats_data %>%
+  select(Course, verbs_per_course,ilo_per_course)  %>%
+  distinct() %>%
+  mutate(total_verbs = sum(verbs_per_course)) %>% 
+  pull() %>%
+  unique
+```
+After the previous methodology has been applied, we have `r total_verb_objectives` individual capacity learning objectives (hereafter capacities). These are the abilities we intend to promote in our students according to our learning objectives and correspond to individual "verbs" (e.g. "understand", "analyse"). The breakdown by level is as follows:
+
+**Level 1000:** `r ilo_verb_stats_data %>% filter(Level == 1) %>% select(Course, verbs_per_course,ilo_per_course)  %>% distinct() %>% mutate(total_verbs = sum(verbs_per_course)) %>% pull() %>% unique()` capacities
+```{r verbs at 1000}
+# for other levels change Level filter
+# ilo_verb_stats_data %>%
+#   filter(Level == 1) %>%
+#   select(Course, verbs_per_course,ilo_per_course)  %>%
+#   distinct() %>%
+#   mutate(total_verbs = sum(verbs_per_course)) %>% 
+#   pull() %>%
+#   unique() %>%
+#   print
+```
+**Level 2000:** `r ilo_verb_stats_data %>% filter(Level == 2) %>% select(Course, verbs_per_course,ilo_per_course)  %>% distinct() %>% mutate(total_verbs = sum(verbs_per_course)) %>% pull() %>% unique()` capacities.
+
+**Level 3000:** `r ilo_verb_stats_data %>% filter(Level == 1) %>% select(Course, verbs_per_course,ilo_per_course)  %>% distinct() %>% mutate(total_verbs = sum(verbs_per_course)) %>% pull() %>% unique()` capacities.
+
+#####Graphically:
+
+######Across all courses:
+
+```{r distribution of verbs per course, warning = FALSE}
+ilo_verb_stats_data %>%
+  select(Course, Level, Concentration, verbs_per_course, ilo_per_course) %>%
+  distinct() %>%
+  #group_by(verbs_per_course) %>%
+  count(verbs_per_course) %>%
+  ggplot(aes(x = verbs_per_course, y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title= "Number of Capacities promoted by Courses") +
+  scale_x_continuous(name = "Number of Capacities",  breaks = seq(0,20,1))+
+  scale_y_continuous("Number of Courses (promoting said number of Capacities)", breaks = seq(0,30,1))+
+  theme_minimal()
+```
+
+######By  Level:
+
+```{r graphs verbs level break down, warning = FALSE}
+
+#Level 1000
+ilo_verb_stats_data %>%
+  filter(Level == 1) %>%
+  select(Course, Level, Concentration, verbs_per_course, ilo_per_course) %>%
+  distinct() %>%
+  #group_by(verbs_per_course) %>%
+  count(verbs_per_course) %>%
+  ggplot(aes(x = verbs_per_course, y = n)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  labs(title= "Number of Capacities promoted by 1000 Level Courses") +
+  scale_x_continuous(name = "Number of Capacities",  breaks = seq(0,20,1))+
+  scale_y_continuous("Number of Courses (promoting said number of Capacities)", breaks = seq(0,20,1))+
+  theme_minimal()
+  
+#Level2000
+ilo_verb_stats_data %>%
+  filter(Level == 2) %>%
+  select(Course, Level, Concentration, verbs_per_course, ilo_per_course) %>%
+  distinct() %>%
+  #group_by(verbs_per_course) %>%
+  count(verbs_per_course) %>%
+  ggplot(aes(x = verbs_per_course, y = n)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  labs(title= "Number of Capacities promoted by 2000 Level Courses") +
+  scale_x_continuous(name = "Number of Capacities",  breaks = seq(0,20,1))+
+  scale_y_continuous("Number of Courses (promoting said number of Capacities)", breaks = seq(0,20,1))+
+  theme_minimal()
+
+#Level3000
+ilo_verb_stats_data %>%
+  filter(Level == 3) %>%
+  select(Course, Level, Concentration, verbs_per_course, ilo_per_course) %>%
+  distinct() %>%
+  #group_by(verbs_per_course) %>%
+  count(verbs_per_course) %>%
+  ggplot(aes(x = verbs_per_course, y = n)) +
+  geom_bar(stat = "identity", fill = "navy") +
+  labs(title= "Number of Capacities promoted by 3000 Level Courses") +
+  scale_x_continuous(name = "Number of Capacities",  breaks = seq(0,20,1))+
+  scale_y_continuous("Number of Courses (promoting said number of Capacities)", breaks = seq(0,20,1))+
+  theme_minimal()
+
+```
+
+###Capacities inspection
+So what are these capacities?
+
+####Across all courses
+```{r verb counts maunal text analysis, warning = FALSE}
+verbs_unrepeated <- ilo_data_clean %>%
+  group_by(Verb)  %>%
+  mutate(n = n()) %>%
+  select(Verb, n) %>%
+  distinct()      # %>%
+  # filter(!is.na(Verb)) #REMOVE NA
+
+verbs_unrepeated        %>%
+  top_n(n = 20, wt = n) %>%
+  arrange(desc(n))      %>%    
+  ungroup()             %>%
+  .[1:20,]              %>%
+  ggplot(aes(x = reorder(Verb,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Most Common Capacities across all Courses", x = "Capacity", y = "Number of appearances") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+####Breakdown by Level
+```{r level break down manual text analysis, warning = FALSE}
+levels <- 1:3
+verbs_unrepeated <- ilo_data_clean %>%
+  group_by(Level, Verb)            %>%
+  mutate(n = n())                  %>%
+  select(Level, Verb, n)           %>%
+  distinct()
+
+d_level_plots <- verbs_unrepeated %>% 
+  group_by(Level)                 %>%
+  top_n(n = 20, wt = n)           %>%
+  ungroup()
+
+for (lev in levels){
+  plot <- d_level_plots %>%
+    filter(Level == lev) %>%
+    ggplot(aes(x = reorder(Verb,-n), y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Most Common Capacities for ", lev, "000 Level",sep = ""), x = "Capacity", y = "Number of appearances")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+```
+
+####Breakdown by Concentration
+```{r concentration break down manual text analysis, warning = FALSE}
+concentrations <- ilo_data_clean%>% select(Concentration) %>% distinct %>% pull
+
+verbs_unrepeated <- ilo_data_clean %>%
+  group_by(Concentration, Verb)            %>%
+  mutate(n = n())                  %>%
+  select(Concentration, Verb, n)           %>%
+  distinct()
+
+d_concentration_plots <- verbs_unrepeated %>% 
+  group_by(Concentration)                 %>%
+  top_n(n = 20, wt = n)           %>%
+  ungroup()
+
+for (conc in concentrations){
+  plot <- d_concentration_plots %>%
+    filter(Concentration == conc) %>%
+    ggplot(aes(x = reorder(Verb,-n), y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Most Common Capacities for ", conc, sep = ""), x = "Capacity", y = "Number of appearances")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+```
+#### Breakdown by Cluster
+```{r cluster break down manual text analysis, warning = FALSE}
+cluster_data <- read_excel("Clusters_simple.xlsx")
+
+clusters <- cluster_data%>% select(Cluster) %>% distinct %>% pull
+
+courses_no_cluster <- ilo_data_clean %>%
+  left_join(cluster_data, by = "Course") %>%
+  filter(is.na(Cluster)) %>% 
+  select("Course") %>% 
+  distinct()
+
+verbs_unrepeated <- ilo_data_clean %>%
+  left_join(cluster_data, by = "Course") %>%
+  group_by(Cluster, Verb)            %>%
+  mutate(n = n())                  %>%
+  select(Cluster, Verb, n)           %>%
+  distinct()
+
+d_cluster_plots <- verbs_unrepeated %>% 
+  group_by(Cluster)                 %>%
+  top_n(n = 20, wt = n)           %>%
+  ungroup()
+
+for (clust in clusters){
+  plot <- d_cluster_plots %>%
+    filter(Cluster == clust) %>%
+    ggplot(aes(x = reorder(Verb,-n), y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Most Common Capacities for ", clust, sep = ""), x = "Capacity", y = "Number of appearances")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+```
+#Mapping to Blooms taxonomy
+##Methodology
+**Objective:** To map the verbs used in the ILOs to the cognitive process dimension of Bloom's Taxonomy. 
+
+**Procedure:** 
+
+1) The verbs the previoulsy identified and standardised verbs from the ILOs were extracted and put into a separate Excel file.
+
+2) The verb was matched to a dimension on and mapped to Blooms dimensions using *Bloom's Taxonomy Verb Chart* form the University of Arkansas (available here: https://tips.uark.edu/blooms-taxonomy-verb-chart/) as a guide. 
+
+3) The file was imported back and the outcome can be seen below.
+
+##Brief description of Bloom's Taxonomy
+In general learning objectives are understood as consisting of two parts, usually a verb and a noun, corresponding to the 
+
+> "the kind of behavior to be developed in the student and the content . .. in which this behavior is to operate"(Tyler,1949, p. 30).
+
+Roughly, in Bloom's Taxonomy the behaviour or verb is refered to as the `cognitive process`. This is to promote an understandning of the verb in the learning objectives in terms of the cognitive activity of the student rather than their end behaviour. For instance, a learning objective of the kind "the student will be able to list..." implies (using Bloom) the simple act of remembering. In contrast, without emphasis on cognitive processes, a student might be required to analyse material from several sources and develop the list which they then communicate. This is far more complex than remembering and it is why the emphasis is made on cognitive activities to avoid ambiguity. 
+
+The levels of the congnitive process dimension in Bloom's taxonomy are:
+
+1. Remember - Retreive knowledge from long term memory.
+
+2. Understand - Construct meaning from materials.
+
+3. Apply - Carry out or use a procedure in a given situation.
+
+4. Analyse - Break material into constituent parts, and determine the relation between parts to one another and to an overall structure or purpose
+
+5. Evaluate - Make judgments based on criteria and standards
+
+6. Create - Put elements together to form a coherent or functional whole; reorganize elements into a new pattern or structure.
+
+(Anderson, Krathwohl & Bloom, 2001, "5.1 The cognitive process dimension")
+
+##Results
+```{r mapping to Blooms Taxonomy, eval = F}
+# Used to create mapping manually input
+ilo_bloom_export <- ilo_data_clean %>% 
+  select(Verb) %>% 
+  distinct() %>% 
+  mutate(Remember   = NA,
+         Understand = NA,
+         Apply      = NA,
+         Analyse    = NA,
+         Evaluate   = NA,
+         Create     = NA)
+
+write_excel_csv(ilo_bloom_export, path ="~/Documents/Summer UCM/ILO/Verb_chart.csv", na = "" )
+```
+Mapping the verbs used according to the capacity, we have:
+```{r import verbs mapping to bloom}
+blooms_mapping_data <- read_excel("~/Documents/Summer UCM/ILO/Verb_chart.xlsx", na = c("", "NA"))
+```
+
+```{r print blooms verbs, results = "asis"}
+knitr::kable(
+  x = blooms_mapping_data, 
+  
+  caption = "Table of verbs and their corresponding cognitive dimensions"
+  )
+```
+
+```{r blooms taxonomy in ILOs}
+ilo_with_bloom <- ilo_data_clean %>% 
+  left_join(blooms_mapping_data, by = "Verb") %>%
+  left_join(cluster_data, by = "Course")
+```
+### Graphically
+####Across all courses
+```{r bloom all courses, warning = FALSE}
+cognitive_process_unrepeated <- ilo_with_bloom %>%
+  gather(key = "Cognitive_Process", value = "Value_Cognitive_Process", Remember:Create) %>%
+  filter(Value_Cognitive_Process == 1)
+
+cognitive_process_tmp <- cognitive_process_unrepeated %>%
+  group_by(Cognitive_Process)  %>%
+  mutate(n = n()) %>%
+  select(Cognitive_Process, n) %>%
+  distinct()  
+
+cognitive_process_tmp        %>%
+  ggplot(aes(x = reorder(Cognitive_Process,-n), y = n)) +
+  geom_histogram(stat = "identity", fill = "navy") +
+  labs(title = "Cognitive Processes across all Courses", x = "Cognitive Process", y = "Number of appearances") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+####Breakdown by Level
+```{r bloom level break down, warning = FALSE}
+cognitive_process_tmp <- cognitive_process_unrepeated %>%
+  group_by(Level, Cognitive_Process)  %>%
+  mutate(n = n()) %>%
+  select(Level,Cognitive_Process, n) %>%
+  distinct() 
+
+for (lev in levels){
+  plot <- cognitive_process_tmp %>%
+    filter(Level == lev) %>%
+    ggplot(aes(x = Cognitive_Process, y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Cognitive Process for ", lev, "000 Level", sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+```
+
+####Breakdown by Concentration
+```{r bloom concentration, warning = FALSE}
+cognitive_process_tmp <- cognitive_process_unrepeated %>%
+  group_by(Concentration, Cognitive_Process)  %>%
+  mutate(n = n()) %>%
+  select(Concentration,Cognitive_Process, n) %>%
+  distinct() 
+
+for (conc in concentrations){
+  plot <- cognitive_process_tmp %>%
+    filter(Concentration == conc) %>%
+    ggplot(aes(x = Cognitive_Process, y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Cognitive Process for ", conc, sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+#TO DO: AVOID DROPPING EMPTY COLUMN
+```
+#### Breakdown by Cluster
+Breakdown by cluster and level (levels appear as 1 = 1000, 2 = 2000, 3 = 3000)
+```{r bloom cluster, warning = FALSE}
+cognitive_process_tmp <- cognitive_process_unrepeated %>%
+  group_by(Cluster, Level, Cognitive_Process)  %>%
+  mutate(n = n()) %>%
+  select(Cluster,Level, Cognitive_Process, n) %>%
+  distinct() 
+
+for (clust in clusters){
+  plot <- cognitive_process_tmp %>%
+    filter(Cluster == clust) %>%
+    ggplot(aes(x = Cognitive_Process, y = n)) +
+    geom_histogram(stat = "identity", fill = "navy") +
+    labs(title = paste("Cognitive Process for ", clust, sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
+    facet_grid(~Level)+
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  print(plot)
+}
+#TO DO: AVOID DROPPING EMPTY COLUMN
+```
+## Quality of ILOs
+
+According to the UM framework of Constructive Alignment at Course Level, "an ILO is well-formulated when a student who reads the ILO knows what to do and how well to do it in order to achieve the ILO." (https://constructivealignment.maastrichtuniversity.nl/ilos-course-level/)
+For which an ILO must be:
+1) Fromulated from the student's perspective
+2) Clarify the type of knowledge
+3) Clarify the topics that will be taught/learned
+4) Clarify the level of understanding or performance (and how this achievement is displayed) of each chosen topic.
+
+Taking this into account the following criteria were developed to evaluate the quality of ILOs:
+
+1) Formulated from student perspective (0,1):
+2) Concise (-1, 0 , 1)
+The ILO has a single cognitive process or a single knowledge dimension, or there is a clear strong relation between them.
+3) Clear Capacity (-1, 0 , 1)
+Clear what student needs to do, (ideally it is measurable/observable), it should be fairly easy to move from this to assessment
+4) Clear Content (-1, 0 , 1)
+Content is clear and has specific terminology that could be identified by someone in the field who does not teach the course. 
+5) Measurable behaviour (0, 1)
+The cognitive process dimension is observable. [TO BE FINISHED]
+6) Phrasing (-1, 0 , 1)
+Clear concise and simple phrasing with no spelling or grammatical errors. 
+
+Note:Clear Capacity was separated from measurable behaviour to allow for verbs such as "understand" to be included in clear capacity, however it is not obvious how moves from there to assessment, which would be if observable behaviours where used. 
+```{r quality}
+ilo_quality_data <-  ilo_data_clean %>% select(Course, ILO, `Course_Intention/Student_profile`, Concise, Clear_capacity, Clear_content, Phrasing #, Measurable_behaviour
+                                               )
+
+ilo_ranking <- ilo_quality_data %>% 
+  mutate(Student_perspective = case_when(
+    `Course_Intention/Student_profile` == "C" ~0,
+    `Course_Intention/Student_profile` == "S" ~1)) %>%
+  select(-`Course_Intention/Student_profile`) %>%
+  mutate(ranking = Concise + Clear_capacity + Clear_content + Phrasing +
+         #+ Measurable_behaviour 
+           Student_perspective) %>%
+  arrange(desc(ranking))
+
+knitr::kable(ilo_ranking %>% select(Course, ILO, ranking, everything())%>% head(20))
+```
+
+# Examples of Rephrasing ILOs
+Bellow some examples of how ILOs could be rephrased:
+```{r rephrased ilos, results = "asis"}
+rephrased_ilos <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019_rephrased.xlsx")
+
+knitr::kable(rephrased_ilos %>% select(Course, ILO, ILO_new, Changed) %>% filter(!is.na(Changed)))
+```
+# Students Profiles Bloom
+```{r ilo ranking averages}
+#quality per course
+no_ilo_per_course <- ilo_ranking %>% group_by(Course) %>% summarize(n = n())
+ilo_ranking  %>% group_by(Course) %>% summarise_at(vars(Concise, Clear_capacity, Clear_content, Phrasing, Student_perspective, ranking), sum) %>% left_join(no_ilo_per_course, by = "Course")
+
+ilo_ranking  %>% group_by(Course) %>% summarise_at(vars(Concise, Clear_capacity, Clear_content, Phrasing, Student_perspective, ranking), mean) %>% left_join(no_ilo_per_course, by = "Course")
+
+```
+A very basic sketch of how things are aggregated (here we take every ILO to count equally).
+```{r aggreagated bloom by course}
+course_aggregated_bloom <- ilo_with_bloom %>% 
+  select(Course, Remember, Understand, Apply, Analyse, Evaluate, Create) %>%
+  group_by(Course) %>%
+  summarize_at(vars(Remember, Understand, Apply, Analyse, Evaluate, Create), sum)
+
+#Cleaning NA
+#course_aggregated_bloom %>% filter_all(any_vars(is.na(.)))
+```
+For some courses we do not have the ilos, therefore we do an inner_join
+```{r student Bloom profile}
+#ilo_data <- import("~/Documents/DARS/Fresh DARS/DARS/Output/data_general.RDATA") # contains d_AoD, d_assessment, d_course, d_ILO
+load("~/Documents/DARS/Fresh DARS/DARS/Output/data_student.RDATA") # contains d_transcript, d_transcript augmented.
+
+student_bloom_profile <- d_transcript %>% 
+  inner_join(course_aggregated_bloom, by = c("Course ID" = "Course")) %>%
+  mutate_at(vars(Remember, Understand, Apply, Analyse, Evaluate, Create), funs(weighted = ./Grade))
+```
+
+###Visualising Students Bloom
+```{r student visual}
+student_sample = c(sample(student_bloom_profile$`Student ID`%>% unique(),10 ))
+s_student = student_sample[1]
+
+student_bloom_profile %>% group_by(`Student ID`) %>%
+  summarise_at(vars(Remember, Understand, Apply, Analyse, Evaluate, Create), sum) %>%
+  gather(key = "Cognitive_Process", value = "Value", Remember:Create) %>%
+  filter(`Student ID` == s_student) %>% # here we select
+  ggplot(aes(x = Cognitive_Process, y = Value))+
+  geom_bar(stat = "identity", fill = "navy") +
+  labs(title= paste("Cognitive Processes for", s_student, "accross all their courses", sep = " ")) +
+  theme_minimal()
+
+```
+
+#Methods in ILO's
+```{r}
+no_ilo_methods <- ilo_data_clean %>% filter(`Methodology LO` == "M") %>% select(Course,ILO) %>% distinct %>% nrow()
+```
+
+A separate question to consider is: how many of our ILOs explicitly refer to methodology?
+During the verb extraction, a comment was also made refering to whether or not the ILO explicitly refered to methodology. Out of the `r no_ilo` ILOs existing in the curricula, there were `r no_ilo_methods` about methodoloy (this is `r 100*no_ilo_methods/no_ilo`%).
+
+Here are the ILO's which I marked as refering to methodology, the verbs used have been added for completeness:
+
+```{r methodology ilos, results = "asis"}
+paste_collapse <- function(vector){
+  paste(vector, collapse = ", ")
+}
+
+methodology_ilos <- ilo_data_clean %>% 
+  filter(`Methodology LO` == "M")  %>% 
+  select(Course, ILO, Verb)        %>% 
+  group_by(Course, ILO) %>%
+  mutate(Verbs_used = paste_collapse(Verb)) %>% select(-Verb) %>% distinct() %>% arrange(Course)
+
+knitr::kable(
+  x = methodology_ilos, 
+  
+  caption = "ILOs concenrning to methodology"
+  )
+
+```
+
+```{r export methodology ilos, eval = F}
+#create the csv for analytsing methodology ilos
+write_csv(methodology_ilos, path = "~/Documents/Summer UCM/Methodology/Methodology_ilos.csv" )
+```
+
+# Missing ILO
+
+I'm missing the ILOs of the following UCM courses (they appear in transcripts):
+
+```{r missing}
+collapse_or_2 <- function(string_vector){
+  paste(string_vector, collapse ="|")
+}
+
+courses_with_ilo_data <- ilo_data %>% select(Course) %>% distinct
+UCM_codes <- courses_with_ilo_data %>% transmute(strings = str_sub(Course,1, 3)) %>% unique() %>% pull()
+UCM_codes <- c(UCM_codes, "CAP")
+
+
+all_courses <- d_transcript %>% select(`Course ID`) %>% distinct() %>% arrange(`Course ID`)
+
+no_ilo_courses <- all_courses %>% anti_join(courses_with_ilo_data, by = c("Course ID" ="Course")) 
+no_ilo_ucm_courses <- no_ilo_courses %>% mutate(is_UCM = str_detect(`Course ID`, collapse_or_2(UCM_codes))) %>% filter(is_UCM == TRUE)
+```
+Total: 
+
+```{r print missing}
+print(dim(no_ilo_ucm_courses %>% select(`Course ID`))[1])
+
+knitr::kable(no_ilo_ucm_courses %>% select(`Course ID`))
+```
+## Missing from ILO file with cluster:
+
+The following courses from the cluster groups are missing from my ILO file:
+
+```{r missing from ilos in cluster file}
+# Courses included in ILO file 
+test_courses_w_ilos<- ilo_data %>% select(Course) %>% unique() %>% mutate(ILO = T)
+
+# Courses in cluster data
+
+test_courses_w_cluster <- cluster_data %>% mutate(has_Cluster = T)
+
+# Test
+test_join <- test_courses_w_cluster %>% full_join(test_courses_w_ilos, by = "Course")
+
+# Couses in cluster with no ilos
+with_cluster_without_ilo <- test_join %>% filter(is.na(ILO)) %>% unique()
+with_ilo_without_cluster <- test_join %>% filter (is.na(has_Cluster)) %>% unique()
+
+
+
+# Courses in clusters with no ILO
+# cluster_data %>% left_join(no_ilo_ucm_courses, by = c("Course" = "Course ID")) %>% filter(!is.na(is_UCM)) %>%
+# select(-is_UCM)
+# Courses with no ilo and no cluster
+# cluster_data %>% inner_join(no_ilo_ucm_courses, by = c("Course" = "Course ID")) %>% select(-is_UCM)
+
+knitr::kable(with_cluster_without_ilo %>% select(Course, Cluster))
+
+```
+
+## Missing from Cluster File
+The following courses have ILO data but have not been assigned a cluster (WARNING, THE COURSES ARE PROBABLY DISCONTINUED THIS YEAR):
+
+```{r missing cluster}
+
+knitr::kable(with_ilo_without_cluster %>% select(Course))
+```
+
+#Bibliography
+Anderson, L., Krathwohl, D., & Bloom, B. (2001). A taxonomy for learning, teaching, and assessing: a revision of Bloom’s taxonomy of educational objectives (Complete ed.). New York: Longman.
