@@ -24,21 +24,25 @@ library(tidyverse)
 library(stringr)
 library(readxl)
 library(tidytext)
-library(udpipe) #language model
-library(stargazer) #table output
+library(udpipe)    # language model
+library(stargazer) # table output
 ```
 
 ```{r import, warning = F}
+# Data Import
 ilo_data <- read_excel("~/Documents/Summer UCM/ILO/ILO_2018_2019.xlsx", na = c("", "NA")) %>% distinct()
+
+cluster_data <- read_excel("Clusters_simple.xlsx")
 
 ```
 
 ```{r missing ilos, eval = FALSE}
-ilo_data_missing <- read_excel("~/Documents/Summer UCM/ILO/Missing_ILOs.xlsx", na = c("", "NA"))
+# for eval = TRUE uncomment all
+# ilo_data_missing <- read_excel("~/Documents/Summer UCM/ILO/Missing_ILOs.xlsx", na = c("", "NA"))
 
-ilo_data <- ilo_data %>% full_join(ilo_data_missing, by = Course)
+# ilo_data <- ilo_data %>% full_join(ilo_data_missing, by = Course)
 
-rm(ilo_data_missing)
+# rm(ilo_data_missing)
 ```
 
 ```{r add course level and concentration label, warning = F}
@@ -532,7 +536,7 @@ for (conc in concentrations){
 ```
 #### Breakdown by Cluster
 ```{r cluster break down manual text analysis, warning = FALSE}
-cluster_data <- read_excel("Clusters_simple.xlsx")
+# cluster_data <- read_excel("Clusters_simple.xlsx")
 
 clusters <- cluster_data%>% select(Cluster) %>% distinct %>% pull
 
@@ -602,18 +606,19 @@ The levels of the congnitive process dimension in Bloom's taxonomy are:
 
 ##Results
 ```{r mapping to Blooms Taxonomy, eval = F}
-# Used to create mapping manually input
-ilo_bloom_export <- ilo_data_clean %>% 
-  select(Verb) %>% 
-  distinct() %>% 
-  mutate(Remember   = NA,
-         Understand = NA,
-         Apply      = NA,
-         Analyse    = NA,
-         Evaluate   = NA,
-         Create     = NA)
-
-write_excel_csv(ilo_bloom_export, path ="~/Documents/Summer UCM/ILO/Verb_chart.csv", na = "" )
+# For eval = TRUE uncommment all ()
+# # Used to create mapping manually input
+# ilo_bloom_export <- ilo_data_clean %>% 
+#   select(Verb) %>% 
+#   distinct() %>% 
+#   mutate(Remember   = NA,
+#          Understand = NA,
+#          Apply      = NA,
+#          Analyse    = NA,
+#          Evaluate   = NA,
+#          Create     = NA)
+# 
+# write_excel_csv(ilo_bloom_export, path ="~/Documents/Summer UCM/ILO/Verb_chart.csv", na = "" )
 ```
 Mapping the verbs used according to the capacity, we have:
 ```{r import verbs mapping to bloom}
@@ -644,10 +649,17 @@ cognitive_process_tmp <- cognitive_process_unrepeated %>%
   group_by(Cognitive_Process)  %>%
   mutate(n = n()) %>%
   select(Cognitive_Process, n) %>%
-  distinct()  
+  distinct()   %>%
+  mutate(Order = case_when(Cognitive_Process == "Remember"~ 1,
+                           Cognitive_Process == "Understand"~ 2,
+                           Cognitive_Process == "Apply"~ 3,
+                           Cognitive_Process == "Analyse"~ 4,
+                           Cognitive_Process == "Evaluate"~ 5,
+                           Cognitive_Process == "Create"~ 6
+                           ))
 
 cognitive_process_tmp        %>%
-  ggplot(aes(x = reorder(Cognitive_Process,-n), y = n)) +
+  ggplot(aes(x = reorder(Cognitive_Process, Order), y = n)) +
   geom_histogram(stat = "identity", fill = "navy") +
   labs(title = "Cognitive Processes across all Courses", x = "Cognitive Process", y = "Number of appearances") +
   theme_classic() +
@@ -660,12 +672,21 @@ cognitive_process_tmp <- cognitive_process_unrepeated %>%
   group_by(Level, Cognitive_Process)  %>%
   mutate(n = n()) %>%
   select(Level,Cognitive_Process, n) %>%
-  distinct() 
+  distinct()  %>%
+  ungroup() %>%
+  mutate(Order = case_when(Cognitive_Process == "Remember"~ 1,
+                           Cognitive_Process == "Understand"~ 2,
+                           Cognitive_Process == "Apply"~ 3,
+                           Cognitive_Process == "Analyse"~ 4,
+                           Cognitive_Process == "Evaluate"~ 5,
+                           Cognitive_Process == "Create"~ 6
+                           ),
+         Cognitive_Process = as.factor(Cognitive_Process))
 
 for (lev in levels){
   plot <- cognitive_process_tmp %>%
     filter(Level == lev) %>%
-    ggplot(aes(x = Cognitive_Process, y = n)) +
+    ggplot(aes(x = reorder(Cognitive_Process, Order), y = n)) +
     geom_histogram(stat = "identity", fill = "navy") +
     labs(title = paste("Cognitive Process for ", lev, "000 Level", sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
     theme_classic() +
@@ -680,19 +701,29 @@ cognitive_process_tmp <- cognitive_process_unrepeated %>%
   group_by(Concentration, Cognitive_Process)  %>%
   mutate(n = n()) %>%
   select(Concentration,Cognitive_Process, n) %>%
-  distinct() 
+  distinct()  %>%
+  ungroup %>%
+  mutate(Order = case_when(Cognitive_Process == "Remember"~ 1,
+                           Cognitive_Process == "Understand"~ 2,
+                           Cognitive_Process == "Apply"~ 3,
+                           Cognitive_Process == "Analyse"~ 4,
+                           Cognitive_Process == "Evaluate"~ 5,
+                           Cognitive_Process == "Create"~ 6
+                           ),
+         Cognitive_Process = as.factor(Cognitive_Process)) # need to be factor in order not to drop.
 
 for (conc in concentrations){
   plot <- cognitive_process_tmp %>%
     filter(Concentration == conc) %>%
-    ggplot(aes(x = Cognitive_Process, y = n)) +
+    ggplot(aes(x = reorder(Cognitive_Process, Order), y = n)) +
     geom_histogram(stat = "identity", fill = "navy") +
+    scale_fill_discrete(drop=FALSE)+
+    scale_x_discrete(drop = FALSE)+
     labs(title = paste("Cognitive Process for ", conc, sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
     theme_classic() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
   print(plot)
 }
-#TO DO: AVOID DROPPING EMPTY COLUMN
 ```
 #### Breakdown by Cluster
 Breakdown by cluster and level (levels appear as 1 = 1000, 2 = 2000, 3 = 3000)
@@ -700,16 +731,26 @@ Breakdown by cluster and level (levels appear as 1 = 1000, 2 = 2000, 3 = 3000)
 cognitive_process_tmp <- cognitive_process_unrepeated %>%
   group_by(Cluster, Level, Cognitive_Process)  %>%
   mutate(n = n()) %>%
+  ungroup() %>%                        # This part is to avoid dropping in plot
+  mutate(Level = as.factor(Level) )%>% # This part is to avoid dropping in plot
   select(Cluster,Level, Cognitive_Process, n) %>%
-  distinct() 
+  distinct() %>%
+  mutate(Order = case_when(Cognitive_Process == "Remember"~ 1,
+                           Cognitive_Process == "Understand"~ 2,
+                           Cognitive_Process == "Apply"~ 3,
+                           Cognitive_Process == "Analyse"~ 4,
+                           Cognitive_Process == "Evaluate"~ 5,
+                           Cognitive_Process == "Create"~ 6
+                           ),
+         Cognitive_Process = as.factor(Cognitive_Process))
 
 for (clust in clusters){
   plot <- cognitive_process_tmp %>%
     filter(Cluster == clust) %>%
-    ggplot(aes(x = Cognitive_Process, y = n)) +
+    ggplot(aes(x = reorder(Cognitive_Process, Order), y = n)) +
     geom_histogram(stat = "identity", fill = "navy") +
     labs(title = paste("Cognitive Process for ", clust, sep = ""), x = "Cognitive Process", y = "Number of appearances in ILOs")+
-    facet_grid(~Level)+
+    facet_wrap(~Level, drop = FALSE) +
     theme_classic() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
   print(plot)
@@ -839,9 +880,11 @@ knitr::kable(
 ```
 
 ```{r export methodology ilos, eval = F}
-#create the csv for analytsing methodology ilos
-write_csv(methodology_ilos, path = "~/Documents/Summer UCM/Methodology/Methodology_ilos.csv" )
+# For eval = TRUE uncomment all
+# #create the csv for analytsing methodology ilos
+# write_csv(methodology_ilos, path = "~/Documents/Summer UCM/Methodology/Methodology_ilos.csv" )
 ```
+
 # Missing ILO
 
 I'm missing the ILOs of the following UCM courses (they appear in transcripts):
