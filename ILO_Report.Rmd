@@ -837,16 +837,28 @@ student_bloom_profile <- d_transcript %>%
 ###Visualising Students Bloom
 ```{r student visual}
 student_sample = c(sample(student_bloom_profile$`Student ID`%>% unique(),10 ))
-s_student = student_sample[1]
+# s_student = student_sample[1]
 
-student_bloom_profile %>% group_by(`Student ID`) %>%
-  summarise_at(vars(Remember, Understand, Apply, Analyse, Evaluate, Create), sum) %>%
-  gather(key = "Cognitive_Process", value = "Value", Remember:Create) %>%
-  filter(`Student ID` == s_student) %>% # here we select
-  ggplot(aes(x = Cognitive_Process, y = Value))+
-  geom_bar(stat = "identity", fill = "navy") +
-  labs(title= paste("Cognitive Processes for", s_student, "accross all their courses", sep = " ")) +
-  theme_minimal()
+for (s_student in student_sample){
+  plot <- student_bloom_profile %>% 
+    group_by(`Student ID`) %>%
+    summarise_at(vars(Remember, Understand, Apply, Analyse, Evaluate, Create), sum) %>%
+    gather(key = "Cognitive_Process", value = "Value", Remember:Create) %>%
+    mutate(Order = case_when(Cognitive_Process == "Remember"~ 1,
+                             Cognitive_Process == "Understand"~ 2,
+                             Cognitive_Process == "Apply"~ 3,
+                             Cognitive_Process == "Analyse"~ 4,
+                             Cognitive_Process == "Evaluate"~ 5,
+                             Cognitive_Process == "Create"~ 6
+                             ),
+           Cognitive_Process = as.factor(Cognitive_Process)) %>%
+    filter(`Student ID` == s_student) %>% # here we select
+    ggplot(aes(x = reorder(Cognitive_Process, Order), y = Value))+
+    geom_bar(stat = "identity", fill = "navy") +
+    labs(title= paste("Cognitive Processes for", s_student, "accross all their courses", sep = " "), x = "Cognitive Process", y = "Number of ILO's") +
+    theme_minimal()
+   print(plot)
+}
 
 ```
 
